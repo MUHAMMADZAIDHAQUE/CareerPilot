@@ -1915,5 +1915,76 @@ export async function finishInterviewSessionApi(sessionId: string): Promise<ApiF
   }
 }
 
+// ---------------------------------------------------------------------------
+// Phase 13: Career Skill Gap Agent
+// ---------------------------------------------------------------------------
+
+export interface RecommendedProjectDetail {
+  title: string;
+  description: string;
+  key_features: string[];
+  deliverables: string;
+}
+
+export interface SkillGapItem {
+  skill: string;
+  frequency_count: number;
+  frequency_percentage: number;
+  candidate_evidence: string;
+  current_strength: "Strong" | "Medium" | "Weak" | "Missing";
+  priority: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+  category?: string;
+  recommended_learning_path: string[];
+  recommended_project?: RecommendedProjectDetail | null;
+}
+
+export interface RoadmapPhase {
+  phase_name: string;
+  timeline: string;
+  focus_skills: string[];
+  milestones: string[];
+  recommended_project?: string | null;
+}
+
+export interface SkillGapAnalysisResponse {
+  candidate_id: string;
+  candidate_name: string;
+  target_jobs_analyzed: number;
+  saved_jobs_count: number;
+  applied_jobs_count: number;
+  total_skills_demanded: number;
+  market_readiness_score: number;
+  identified_gaps_count: number;
+  skills: SkillGapItem[];
+  roadmap: RoadmapPhase[];
+  summary: string;
+}
+
+export async function fetchCareerSkillGapsApi(
+  candidateId?: string
+): Promise<ApiFetchResult<SkillGapAnalysisResponse>> {
+  const startTime = performance.now();
+  try {
+    const url = new URL(`${BASE_HOST}/api/career/skill-gaps`);
+    if (candidateId) url.searchParams.append("candidate_id", candidateId);
+
+    const res = await fetch(url.toString(), {
+      headers: { "Accept": "application/json" },
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: SkillGapAnalysisResponse = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to fetch career skill gaps", latencyMs };
+  }
+}
+
+
 
 

@@ -111,6 +111,12 @@ from backend.app.schemas.interview import (
     QuestionContextItem,
     PreparationTopicItem,
 )
+from backend.app.schemas.career import (
+    SkillGapItem,
+    RoadmapPhase,
+    SkillGapAnalysisResponse,
+    RecommendedProjectDetail,
+)
 
 __all__ = [
     "HealthResponse",
@@ -207,4 +213,8 @@ __all__ = [
     "InterviewSessionResponse",
     "QuestionContextItem",
     "PreparationTopicItem",
+    "SkillGapItem",
+    "RoadmapPhase",
+    "SkillGapAnalysisResponse",
+    "RecommendedProjectDetail",
 ]
