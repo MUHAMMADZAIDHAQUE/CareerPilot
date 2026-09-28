@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   Briefcase,
   Search,
@@ -21,6 +22,7 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   FileText,
   HelpCircle,
 } from "lucide-react";
@@ -367,6 +369,15 @@ export default function JobAnalyzePage() {
 
               {/* Action Buttons */}
               <div className="flex flex-wrap lg:flex-col gap-3 justify-end items-end">
+                <Link
+                  href={`/jobs/${analyzedJob.id}`}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-accent-cyan hover:from-brand-500 hover:to-accent-cyan text-xs font-bold text-white flex items-center space-x-2 transition-all shadow-lg shadow-brand-500/25"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Evaluate Match (Phase 5)</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+
                 {analyzedJob.application_url && (
                   <a
                     href={analyzedJob.application_url}

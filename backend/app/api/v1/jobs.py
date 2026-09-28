@@ -1,18 +1,23 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
-from typing import List
+from typing import List, Optional
 
 from backend.app.db.session import get_db
 from backend.app.schemas.job import (
     JobAnalyzeRequest,
     JobResponse,
 )
-from backend.app.models.job import Job
+from backend.app.schemas.matching import (
+    MatchRequest,
+    MatchResponse,
+)
+from backend.app.models.job import Job, MatchResult
 from backend.app.services.job_analyzer_service import JobAnalyzerService
+from backend.app.services.matching_service import MatchingService
 from backend.app.core.logging import logger
 
-router = APIRouter(tags=["Jobs & JD Analyzer"])
+router = APIRouter(tags=["Jobs & Matching Engine"])
 
 
 @router.post(
@@ -50,6 +55,83 @@ async def analyze_job(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to analyze job description: {str(e)}"
         )
+
+
+@router.post(
+    "/jobs/{job_id}/match",
+    response_model=MatchResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Evaluate candidate match against an analyzed job",
+    description="Calculates deterministic match scores, skill coverage, pgvector semantic similarity, and grounded evidence."
+)
+async def match_job(
+    job_id: str,
+    payload: Optional[MatchRequest] = None,
+    session: AsyncSession = Depends(get_db),
+):
+    """
+    Evaluates candidate against job:
+    - Overall match score (weighted composite)
+    - Required skill coverage & missing required skills
+    - Preferred skill coverage & missing preferred skills
+    - Experience & education compatibility
+    - Project relevance ranking
+    - Verifiable grounded evidence citations
+    """
+    try:
+        cand_id = payload.candidate_id if payload else None
+        weights = payload.weights if payload else None
+        match_result = await MatchingService.match_candidate_to_job(
+            session=session,
+            job_id=job_id,
+            candidate_id=cand_id,
+            weights=weights,
+        )
+        return match_result
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error matching candidate to job: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Matching calculation failed: {str(e)}"
+        )
+
+
+@router.get(
+    "/jobs/{job_id}/match",
+    response_model=MatchResponse,
+    summary="Get latest candidate match evaluation for a job"
+)
+async def get_latest_match(
+    job_id: str,
+    candidate_id: Optional[str] = None,
+    session: AsyncSession = Depends(get_db),
+):
+    """Retrieves the latest match result or calculates one if none exists."""
+    query = select(MatchResult).where(MatchResult.job_id == job_id).order_by(desc(MatchResult.created_at))
+    if candidate_id:
+        query = query.where(MatchResult.candidate_id == candidate_id)
+
+    res = await session.execute(query)
+    existing = res.scalars().first()
+    if existing:
+        return existing
+
+    try:
+        return await MatchingService.match_candidate_to_job(
+            session=session,
+            job_id=job_id,
+            candidate_id=candidate_id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error in get_latest_match: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 @router.get(

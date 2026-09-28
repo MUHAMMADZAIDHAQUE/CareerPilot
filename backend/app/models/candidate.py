@@ -52,6 +52,9 @@ class Candidate(TimeStampedBase):
     resume_documents: Mapped[List["ResumeDocument"]] = relationship(
         "ResumeDocument", back_populates="candidate", lazy="selectin"
     )
+    match_results: Mapped[List["MatchResult"]] = relationship(
+        "MatchResult", back_populates="candidate", cascade="all, delete-orphan", lazy="selectin"
+    )
 
 
 class Education(TimeStampedBase):
@@ -105,6 +108,7 @@ class Skill(TimeStampedBase):
     category: Mapped[str] = mapped_column(String(100), default="General")
     proficiency_level: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     years_of_experience: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    embedding = mapped_column(Vector(settings.EMBEDDING_DIMENSION), nullable=True)
 
     candidate: Mapped["Candidate"] = relationship("Candidate", back_populates="skills")
 

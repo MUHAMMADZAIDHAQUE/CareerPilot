@@ -55,6 +55,7 @@ next-env.d.ts
 data/storage/
 *.sqlite3
 *.db
+scratch/
 
 # OS / IDE
 .DS_Store

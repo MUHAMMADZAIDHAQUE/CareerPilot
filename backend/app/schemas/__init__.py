@@ -43,6 +43,14 @@ from backend.app.schemas.job import (
     JobResponse,
 )
 
+from backend.app.schemas.matching import (
+    MatchWeights,
+    MatchRequest,
+    EvidenceItem,
+    RelevantProjectMatch,
+    MatchResponse,
+)
+
 __all__ = [
     "HealthResponse",
     "DatabaseHealth",
@@ -83,4 +91,9 @@ __all__ = [
     "JobRequirementResponse",
     "ParsedJobAnalysis",
     "JobResponse",
+    "MatchWeights",
+    "MatchRequest",
+    "EvidenceItem",
+    "RelevantProjectMatch",
+    "MatchResponse",
 ]

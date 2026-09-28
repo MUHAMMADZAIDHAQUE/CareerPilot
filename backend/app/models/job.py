@@ -73,12 +73,16 @@ class JobRequirement(TimeStampedBase):
         Text, nullable=True
     )  # Verbatim supporting excerpt from JD for zero-hallucination verification
     years_experience: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    embedding = mapped_column(Vector(settings.EMBEDDING_DIMENSION), nullable=True)
 
     job: Mapped["Job"] = relationship("Job", back_populates="requirements")
 
 
 class MatchResult(TimeStampedBase):
-    """Evaluation Match Result between Candidate and Job."""
+    """
+    Evaluation Match Result between Candidate and Job.
+    Stores deterministic score breakdowns, skill coverage, and grounded evidence.
+    """
     __tablename__ = "match_results"
 
     candidate_id: Mapped[str] = mapped_column(
@@ -88,16 +92,28 @@ class MatchResult(TimeStampedBase):
         String, ForeignKey("jobs.id", ondelete="CASCADE"), index=True, nullable=False
     )
 
-    total_score: Mapped[float] = mapped_column(Float, nullable=False)  # 0.0 - 100.0
-    structured_score: Mapped[float] = mapped_column(Float, nullable=False)
-    semantic_score: Mapped[float] = mapped_column(Float, nullable=False)
+    # Deterministic Sub-scores (0.0 to 100.0)
+    overall_match_score: Mapped[float] = mapped_column(Float, nullable=False)
+    required_skill_coverage: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    preferred_skill_coverage: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    semantic_score: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    experience_compatibility: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    education_compatibility: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    project_relevance: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    total_score: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)  # Legacy alias
 
-    matched_skills: Mapped[List[str]] = mapped_column(JSON, default=list)
-    missing_skills: Mapped[List[str]] = mapped_column(JSON, default=list)
+    # Breakdown Collections
+    matched_skills: Mapped[List[str]] = mapped_column(JSON, default=list, nullable=False)
+    missing_required_skills: Mapped[List[str]] = mapped_column(JSON, default=list, nullable=False)
+    missing_preferred_skills: Mapped[List[str]] = mapped_column(JSON, default=list, nullable=False)
+    relevant_projects: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, default=list, nullable=False)
+    evidence: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, default=list, nullable=False)
+    weights_used: Mapped[Dict[str, float]] = mapped_column(JSON, default=dict, nullable=False)
     explanation: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    evidence_citations: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, default=list)
 
+    # Relationships
     job: Mapped["Job"] = relationship("Job", back_populates="match_results")
+    candidate: Mapped["Candidate"] = relationship("Candidate", back_populates="match_results")
 
 
 # Alias for backward compatibility
