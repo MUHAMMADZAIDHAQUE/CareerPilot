@@ -95,6 +95,12 @@ class Job(TimeStampedBase):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    github_analyses = relationship(
+        "GitHubAnalysis",
+        back_populates="job",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
 
 class JobRequirement(TimeStampedBase):

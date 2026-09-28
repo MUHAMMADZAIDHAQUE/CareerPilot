@@ -76,6 +76,9 @@ class Candidate(TimeStampedBase):
     interview_sessions = relationship(
         "InterviewSession", back_populates="candidate", cascade="all, delete-orphan", lazy="selectin"
     )
+    github_analyses = relationship(
+        "GitHubAnalysis", back_populates="candidate", cascade="all, delete-orphan", lazy="selectin"
+    )
 
 
 class Education(TimeStampedBase):

@@ -20,6 +20,7 @@ from backend.app.models.interview import (
     InterviewTurn,
     InterviewSessionStatus,
 )
+from backend.app.models.github import GitHubAnalysis
 
 __all__ = [
     "Candidate",
@@ -48,4 +49,5 @@ __all__ = [
     "InterviewSession",
     "InterviewTurn",
     "InterviewSessionStatus",
+    "GitHubAnalysis",
 ]

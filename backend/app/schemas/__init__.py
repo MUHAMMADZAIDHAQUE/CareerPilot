@@ -117,6 +117,16 @@ from backend.app.schemas.career import (
     SkillGapAnalysisResponse,
     RecommendedProjectDetail,
 )
+from backend.app.schemas.github import (
+    GitHubAnalyzeRequest,
+    GitHubProfileSummary,
+    DemonstratedSkillItem,
+    MissingSkillItem,
+    RelevantProjectItem,
+    ResumeEvidenceItem,
+    RecommendedImprovementItem,
+    GitHubAnalysisResponse,
+)
 
 __all__ = [
     "HealthResponse",
@@ -217,4 +227,12 @@ __all__ = [
     "RoadmapPhase",
     "SkillGapAnalysisResponse",
     "RecommendedProjectDetail",
+    "GitHubAnalyzeRequest",
+    "GitHubProfileSummary",
+    "DemonstratedSkillItem",
+    "MissingSkillItem",
+    "RelevantProjectItem",
+    "ResumeEvidenceItem",
+    "RecommendedImprovementItem",
+    "GitHubAnalysisResponse",
 ]

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Activity, User, Award, FolderGit2, Layers, Briefcase, Send, Kanban, GraduationCap, TrendingUp } from "lucide-react";
+import { Compass, Activity, User, Award, Github, Layers, Briefcase, Send, Kanban, GraduationCap, TrendingUp } from "lucide-react";
 
 export default function Header() {
   const pathname = usePathname();
@@ -13,6 +13,7 @@ export default function Header() {
     { href: "/jobs/analyze", label: "JD Analyzer", icon: Briefcase },
     { href: "/applications", label: "Applications", icon: Kanban },
     { href: "/career/skill-gaps", label: "Skill Gaps", icon: TrendingUp },
+    { href: "/github", label: "GitHub", icon: Github },
     { href: "/interview", label: "Interview", icon: GraduationCap },
     { href: "/outreach", label: "Outreach", icon: Send },
     { href: "/profile", label: "Profile", icon: User },

@@ -1985,6 +1985,143 @@ export async function fetchCareerSkillGapsApi(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Phase 14: GitHub Career Analyzer
+// ---------------------------------------------------------------------------
+
+export interface GitHubProfileSummary {
+  username: string;
+  name?: string | null;
+  avatar_url?: string | null;
+  bio?: string | null;
+  public_repos: number;
+  followers: number;
+  following: number;
+  total_stars: number;
+  top_languages: string[];
+  profile_url: string;
+}
+
+export interface DemonstratedSkillItem {
+  skill: string;
+  category: string;
+  confidence: "High" | "Medium" | "Emerging" | string;
+  repo_sources: string[];
+  evidence_summary: string;
+}
+
+export interface MissingSkillItem {
+  skill: string;
+  category: string;
+  demanded_by_role: boolean;
+  reason: string;
+}
+
+export interface RelevantProjectItem {
+  name: string;
+  description?: string | null;
+  html_url: string;
+  homepage?: string | null;
+  stars: number;
+  forks: number;
+  primary_language?: string | null;
+  topics: string[];
+  role_relevance_score: number;
+  architecture_highlights: string[];
+  has_readme: boolean;
+  has_deployment: boolean;
+}
+
+export interface ResumeEvidenceItem {
+  skill_or_feature: string;
+  bullet_point: string;
+  repository_name: string;
+  repository_url: string;
+  verifiable_metrics?: string | null;
+}
+
+export interface RecommendedImprovementItem {
+  category: string;
+  priority: "HIGH" | "MEDIUM" | "LOW" | string;
+  title: string;
+  description: string;
+  actionable_steps: string[];
+}
+
+export interface GitHubAnalysisResponse {
+  id: string;
+  candidate_id?: string | null;
+  job_id?: string | null;
+  target_role?: string | null;
+  target_company?: string | null;
+  profile_summary: GitHubProfileSummary;
+  skills_demonstrated: DemonstratedSkillItem[];
+  skills_missing_evidence: MissingSkillItem[];
+  relevant_projects: RelevantProjectItem[];
+  potential_resume_evidence: ResumeEvidenceItem[];
+  recommended_improvements: RecommendedImprovementItem[];
+  created_at: string;
+}
+
+export interface GitHubAnalyzeRequest {
+  username: string;
+  github_token?: string;
+  job_id?: string;
+  candidate_id?: string;
+}
+
+export async function analyzeGitHubApi(
+  payload: GitHubAnalyzeRequest
+): Promise<ApiFetchResult<GitHubAnalysisResponse>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/github/analyze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: GitHubAnalysisResponse = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to analyze GitHub profile", latencyMs };
+  }
+}
+
+export async function fetchLatestGitHubAnalysisApi(
+  username?: string,
+  candidateId?: string
+): Promise<ApiFetchResult<GitHubAnalysisResponse | null>> {
+  const startTime = performance.now();
+  try {
+    const url = new URL(`${BASE_HOST}/api/github/latest`);
+    if (username) url.searchParams.append("username", username);
+    if (candidateId) url.searchParams.append("candidate_id", candidateId);
+
+    const res = await fetch(url.toString(), {
+      headers: { "Accept": "application/json" },
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: GitHubAnalysisResponse | null = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to fetch latest GitHub analysis", latencyMs };
+  }
+}
+
+
 
 
 
