@@ -1446,5 +1446,187 @@ export async function deleteOutreachApi(outreachId: string): Promise<ApiFetchRes
   }
 }
 
+// -----------------------------------------------------------------------------
+// Phase 11: Application CRM Types & APIs
+// -----------------------------------------------------------------------------
+
+export interface Application {
+  id: string;
+  job_id: string;
+  candidate_id?: string | null;
+  resume_version_id?: string | null;
+  status:
+    | "SAVED"
+    | "READY_TO_APPLY"
+    | "APPLIED"
+    | "SCREENING"
+    | "INTERVIEW"
+    | "TECHNICAL"
+    | "FINAL_ROUND"
+    | "OFFER"
+    | "REJECTED"
+    | "WITHDRAWN"
+    | string;
+  applied_at?: string | null;
+  source?: string | null;
+  referral_status?: string | null;
+  interview_stage?: string | null;
+  notes?: string | null;
+  next_action?: string | null;
+  next_followup_date?: string | null;
+  metadata_json?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  job?: {
+    id: string;
+    company: string;
+    role: string;
+    location?: string;
+    employment_type?: string;
+    application_url?: string;
+  } | null;
+  resume_version?: {
+    id: string;
+    version_number: number;
+    validation_status: string;
+  } | null;
+  match_score?: number | null;
+}
+
+export interface KanbanBoardResult {
+  columns: Record<string, Application[]>;
+  total_applications: number;
+}
+
+export async function fetchApplicationsApi(params?: {
+  candidate_id?: string;
+  job_id?: string;
+  status?: string;
+  search?: string;
+}): Promise<ApiFetchResult<Application[]>> {
+  const startTime = performance.now();
+  try {
+    const searchParams = new URLSearchParams();
+    if (params?.candidate_id) searchParams.append("candidate_id", params.candidate_id);
+    if (params?.job_id) searchParams.append("job_id", params.job_id);
+    if (params?.status) searchParams.append("status", params.status);
+    if (params?.search) searchParams.append("search", params.search);
+
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    const res = await fetch(`${BASE_HOST}/api/applications${query}`, {
+      cache: "no-store",
+      headers: { "Accept": "application/json" },
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: Application[] = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to fetch applications", latencyMs };
+  }
+}
+
+export async function fetchKanbanBoardApi(params?: {
+  candidate_id?: string;
+  search?: string;
+}): Promise<ApiFetchResult<KanbanBoardResult>> {
+  const startTime = performance.now();
+  try {
+    const searchParams = new URLSearchParams();
+    if (params?.candidate_id) searchParams.append("candidate_id", params.candidate_id);
+    if (params?.search) searchParams.append("search", params.search);
+
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    const res = await fetch(`${BASE_HOST}/api/applications/kanban${query}`, {
+      cache: "no-store",
+      headers: { "Accept": "application/json" },
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: KanbanBoardResult = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to fetch Kanban board", latencyMs };
+  }
+}
+
+export async function createApplicationApi(payload: Partial<Application>): Promise<ApiFetchResult<Application>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/applications`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: Application = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to create application", latencyMs };
+  }
+}
+
+export async function updateApplicationApi(
+  applicationId: string,
+  payload: Partial<Application>
+): Promise<ApiFetchResult<Application>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/applications/${encodeURIComponent(applicationId)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: Application = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to update application", latencyMs };
+  }
+}
+
+export async function deleteApplicationApi(applicationId: string): Promise<ApiFetchResult<{ success: boolean; message: string }>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/applications/${encodeURIComponent(applicationId)}`, {
+      method: "DELETE",
+      headers: { "Accept": "application/json" },
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to delete application", latencyMs };
+  }
+}
+
 
 

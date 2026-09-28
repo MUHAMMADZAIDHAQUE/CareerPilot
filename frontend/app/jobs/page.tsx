@@ -27,6 +27,7 @@ import {
   X,
   Share2,
   Users,
+  Kanban,
 } from "lucide-react";
 import {
   fetchJobsApi,
@@ -240,6 +241,14 @@ export default function JobDiscoveryDashboard() {
                 <RefreshCw className={`w-3.5 h-3.5 ${syncingFeeds ? "animate-spin text-brand-400" : ""}`} />
                 <span>{syncingFeeds ? "Syncing..." : "Sync Public Feeds"}</span>
               </button>
+
+              <Link
+                href="/applications"
+                className="px-3.5 py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-xs font-semibold text-amber-200 hover:text-white flex items-center space-x-1.5 transition-all shadow-sm"
+              >
+                <Kanban className="w-3.5 h-3.5 text-amber-400" />
+                <span>CRM Board</span>
+              </Link>
 
               <Link
                 href="/jobs/analyze"

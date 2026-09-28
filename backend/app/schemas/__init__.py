@@ -92,6 +92,13 @@ from backend.app.schemas.outreach import (
     OutreachBatchResponse,
     OutreachActionResponse,
 )
+from backend.app.schemas.application import (
+    ApplicationBase,
+    ApplicationCreate,
+    ApplicationUpdate,
+    ApplicationResponse,
+    KanbanBoardResponse,
+)
 
 __all__ = [
     "HealthResponse",
@@ -173,4 +180,9 @@ __all__ = [
     "OutreachGenerateRequest",
     "OutreachBatchResponse",
     "OutreachActionResponse",
+    "ApplicationBase",
+    "ApplicationCreate",
+    "ApplicationUpdate",
+    "ApplicationResponse",
+    "KanbanBoardResponse",
 ]

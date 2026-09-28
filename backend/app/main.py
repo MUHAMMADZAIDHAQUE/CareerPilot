@@ -123,13 +123,14 @@ from backend.app.api.v1.resume import router as resume_router, resumes_router
 from backend.app.api.v1.jobs import router as jobs_router
 from backend.app.api.v1.referrals import router as referrals_router
 from backend.app.api.v1.outreach import router as outreach_router
+from backend.app.api.v1.applications import router as applications_router
 
 
 # -----------------------------------------------------------------------------
 # Route Registration
 # -----------------------------------------------------------------------------
 
-# Mount explicit endpoints requested: /api/health, /api/profile, /api/resume, /api/resumes, /api/jobs, /api/contacts, /api/outreach
+# Mount explicit endpoints requested: /api/health, /api/profile, /api/resume, /api/resumes, /api/jobs, /api/contacts, /api/outreach, /api/applications
 app.include_router(health_router, prefix="/api")
 app.include_router(profile_router, prefix="/api")
 app.include_router(resume_router, prefix="/api")
@@ -137,6 +138,7 @@ app.include_router(resumes_router, prefix="/api")
 app.include_router(jobs_router, prefix="/api")
 app.include_router(referrals_router, prefix="/api")
 app.include_router(outreach_router, prefix="/api")
+app.include_router(applications_router, prefix="/api")
 
 # Mount full API v1 router: /api/v1/...
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)

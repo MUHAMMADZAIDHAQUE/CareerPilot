@@ -13,6 +13,7 @@ from backend.app.models.resume import ResumeDocument, ResumeVersion, CompiledRes
 from backend.app.models.job import Job, JobRequirement, JobPosting, MatchResult
 from backend.app.models.referral import Contact, Referral
 from backend.app.models.outreach import Outreach, OutreachStatus
+from backend.app.models.application import Application, ApplicationStatus
 
 __all__ = [
     "Candidate",
@@ -35,4 +36,6 @@ __all__ = [
     "Referral",
     "Outreach",
     "OutreachStatus",
+    "Application",
+    "ApplicationStatus",
 ]

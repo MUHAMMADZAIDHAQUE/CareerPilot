@@ -27,6 +27,7 @@ import {
   FileCode,
   Wand2,
   Users,
+  Kanban,
 } from "lucide-react";
 import {
   fetchJobApi,
@@ -34,6 +35,7 @@ import {
   fetchLatestMatchApi,
   tailorResumeApi,
   fetchLatestTailoredResumeApi,
+  createApplicationApi,
   Job,
   MatchResponse,
   TailorResumeResponse,
@@ -187,6 +189,26 @@ export default function JobMatchDetailPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={async () => {
+              const res = await createApplicationApi({
+                job_id: jobId,
+                status: "SAVED",
+                notes: `Tracked from job page: ${job.role} at ${job.company}`,
+              });
+              if (res.data) {
+                router.push("/applications");
+              } else {
+                alert(res.error || "Failed to track application in CRM");
+              }
+            }}
+            className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-600 to-emerald-600 hover:from-amber-500 hover:to-emerald-500 text-white text-xs font-bold shadow-md shadow-amber-500/20 transition-all flex items-center space-x-1.5"
+          >
+            <Kanban className="w-3.5 h-3.5 text-amber-200" />
+            <span>Track in CRM (Phase 11)</span>
+          </button>
+
           <Link
             href={`/jobs/${jobId}/referrals`}
             className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition-all flex items-center space-x-1.5"

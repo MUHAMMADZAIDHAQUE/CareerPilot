@@ -67,6 +67,9 @@ class Candidate(TimeStampedBase):
     outreach_messages = relationship(
         "Outreach", back_populates="candidate", cascade="all, delete-orphan", lazy="selectin"
     )
+    applications = relationship(
+        "Application", back_populates="candidate", cascade="all, delete-orphan", lazy="selectin"
+    )
 
 
 class Education(TimeStampedBase):
