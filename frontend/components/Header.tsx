@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Activity, FileText, Layers, ShieldCheck } from "lucide-react";
+import { Compass, Activity, User, Award, FolderGit2, Layers } from "lucide-react";
 
 export default function Header() {
   const pathname = usePathname();
 
   const navLinks = [
     { href: "/", label: "Overview", icon: Layers },
-    { href: "/health", label: "System Status", icon: Activity },
+    { href: "/profile", label: "Career Profile", icon: User },
+    { href: "/profile/skills", label: "Skills", icon: Award },
+    { href: "/profile/projects", label: "Projects", icon: FolderGit2 },
+    { href: "/health", label: "Diagnostics", icon: Activity },
   ];
 
   return (
@@ -26,8 +29,8 @@ export default function Header() {
                 <span className="font-bold text-lg tracking-tight text-white group-hover:text-brand-400 transition-colors">
                   CareerPilot<span className="text-brand-400">.AI</span>
                 </span>
-                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20">
-                  Phase 1
+                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  Phase 2 Active
                 </span>
               </div>
               <p className="text-xs text-slate-400 hidden sm:block">
@@ -40,27 +43,27 @@ export default function Header() {
           <nav className="flex items-center space-x-1 sm:space-x-2">
             {navLinks.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === item.href;
+              const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href) && item.href !== "/profile");
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                    isActive
-                      ? "bg-slate-800 text-white shadow-sm border border-slate-700/60"
+                  className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                    pathname === item.href
+                      ? "bg-slate-800 text-white shadow-sm border border-slate-700/60 font-semibold"
                       : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? "text-brand-400" : ""}`} />
+                  <Icon className={`w-4 h-4 ${pathname === item.href ? "text-brand-400" : ""}`} />
                   <span>{item.label}</span>
                 </Link>
               );
             })}
 
-            <div className="hidden md:flex items-center pl-3 border-l border-slate-800 ml-2">
-              <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Foundation Ready</span>
+            <div className="hidden lg:flex items-center pl-3 border-l border-slate-800 ml-2">
+              <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-medium">
+                <span className="w-2 h-2 rounded-full bg-brand-400 animate-pulse" />
+                <span>Profile Engine Online</span>
               </div>
             </div>
           </nav>

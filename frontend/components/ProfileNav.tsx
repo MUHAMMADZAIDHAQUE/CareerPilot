@@ -1,0 +1,39 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { User, Award, FolderGit2, Sliders, Sparkles } from "lucide-react";
+
+export default function ProfileNav() {
+  const pathname = usePathname();
+
+  const tabs = [
+    { href: "/profile", label: "Profile & Experience", icon: User },
+    { href: "/profile/skills", label: "Skills Inventory", icon: Award },
+    { href: "/profile/projects", label: "Projects & Portfolio", icon: FolderGit2 },
+    { href: "/profile/preferences", label: "Career Preferences", icon: Sliders },
+  ];
+
+  return (
+    <div className="flex border-b border-slate-800 space-x-1 sm:space-x-4 overflow-x-auto pb-px">
+      {tabs.map((tab) => {
+        const Icon = tab.icon;
+        const isActive = pathname === tab.href;
+        return (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-all ${
+              isActive
+                ? "border-brand-500 text-brand-400 bg-brand-500/5 font-semibold"
+                : "border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700"
+            }`}
+          >
+            <Icon className={`w-4 h-4 ${isActive ? "text-brand-400" : "text-slate-400"}`} />
+            <span>{tab.label}</span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
