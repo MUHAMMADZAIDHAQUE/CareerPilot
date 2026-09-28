@@ -35,6 +35,13 @@ from backend.app.schemas.resume import (
     ResumeConfirmRequest,
     ResumeConfirmResponse,
 )
+from backend.app.schemas.job import (
+    JobAnalyzeRequest,
+    JobRequirementBase,
+    JobRequirementResponse,
+    ParsedJobAnalysis,
+    JobResponse,
+)
 
 __all__ = [
     "HealthResponse",
@@ -71,4 +78,9 @@ __all__ = [
     "ResumeUploadResponse",
     "ResumeConfirmRequest",
     "ResumeConfirmResponse",
+    "JobAnalyzeRequest",
+    "JobRequirementBase",
+    "JobRequirementResponse",
+    "ParsedJobAnalysis",
+    "JobResponse",
 ]

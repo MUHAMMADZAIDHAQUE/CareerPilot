@@ -120,16 +120,18 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 from backend.app.api.v1.health import router as health_router
 from backend.app.api.v1.profile import router as profile_router
 from backend.app.api.v1.resume import router as resume_router
+from backend.app.api.v1.jobs import router as jobs_router
 
 
 # -----------------------------------------------------------------------------
 # Route Registration
 # -----------------------------------------------------------------------------
 
-# Mount explicit endpoints requested: /api/health, /api/profile, /api/resume
+# Mount explicit endpoints requested: /api/health, /api/profile, /api/resume, /api/jobs
 app.include_router(health_router, prefix="/api")
 app.include_router(profile_router, prefix="/api")
 app.include_router(resume_router, prefix="/api")
+app.include_router(jobs_router, prefix="/api")
 
 # Mount full API v1 router: /api/v1/...
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)

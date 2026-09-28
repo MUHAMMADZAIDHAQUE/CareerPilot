@@ -13,6 +13,7 @@ import {
   Terminal,
   Activity,
   Layers,
+  Briefcase,
 } from "lucide-react";
 import SystemHealth from "@/components/SystemHealth";
 
@@ -68,23 +69,28 @@ export default function Home() {
 
         <div className="mt-6 flex flex-wrap gap-4 items-center">
           <Link
-            href="/health"
-            className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-medium text-sm shadow-lg shadow-brand-500/25 transition-all"
+            href="/jobs/analyze"
+            className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-brand-600 to-accent-cyan hover:from-brand-500 hover:to-accent-cyan text-white font-medium text-sm shadow-lg shadow-brand-500/25 transition-all"
           >
-            <Activity className="w-4 h-4" />
-            <span>View System Diagnostics</span>
+            <Briefcase className="w-4 h-4" />
+            <span>Open JD Analyzer</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
 
-          <a
-            href="http://localhost:8000/api/docs"
-            target="_blank"
-            rel="noreferrer"
+          <Link
+            href="/profile"
             className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-200 font-medium text-sm transition-all"
           >
-            <Terminal className="w-4 h-4 text-brand-400" />
-            <span>FastAPI Interactive Docs</span>
-          </a>
+            <span>Career Profile</span>
+          </Link>
+
+          <Link
+            href="/health"
+            className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300 font-medium text-sm transition-all"
+          >
+            <Activity className="w-4 h-4" />
+            <span>Diagnostics</span>
+          </Link>
         </div>
       </section>
 

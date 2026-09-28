@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Activity, User, Award, FolderGit2, Layers } from "lucide-react";
+import { Compass, Activity, User, Award, FolderGit2, Layers, Briefcase } from "lucide-react";
 
 export default function Header() {
   const pathname = usePathname();
 
   const navLinks = [
     { href: "/", label: "Overview", icon: Layers },
+    { href: "/jobs/analyze", label: "JD Analyzer", icon: Briefcase },
     { href: "/profile", label: "Career Profile", icon: User },
     { href: "/profile/skills", label: "Skills", icon: Award },
     { href: "/profile/projects", label: "Projects", icon: FolderGit2 },
@@ -29,8 +30,8 @@ export default function Header() {
                 <span className="font-bold text-lg tracking-tight text-white group-hover:text-brand-400 transition-colors">
                   CareerPilot<span className="text-brand-400">.AI</span>
                 </span>
-                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  Phase 2 Active
+                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20">
+                  Phase 4 Active
                 </span>
               </div>
               <p className="text-xs text-slate-400 hidden sm:block">
