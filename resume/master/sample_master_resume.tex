@@ -1,0 +1,98 @@
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
+
+\urlstyle{same}
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Sections formatting
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+\begin{document}
+
+%----------HEADING----------
+\begin{center}
+    \textbf{\Huge \scshape Alex Mercer} \\ \vspace{1pt}
+    \small +1 (555) 019-2834 $|$ \href{mailto:alex.mercer@example.com}{\underline{alex.mercer@example.com}} $|$ 
+    \href{https://linkedin.com/in/alexmercer}{\underline{linkedin.com/in/alexmercer}} $|$
+    \href{https://github.com/alexmercer}{\underline{github.com/alexmercer}} $|$
+    \underline{San Francisco, CA}
+\end{center}
+
+%-----------EDUCATION-----------
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {University of California, Berkeley}{Berkeley, CA}
+      {Bachelor of Science in Computer Science; GPA: 3.85}{Aug 2018 -- May 2022}
+  \resumeSubHeadingListEnd
+
+%-----------EXPERIENCE-----------
+\section{Experience}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {Apex Distributed Systems}{San Francisco, CA}
+      {Senior Software Engineer}{June 2022 -- Present}
+      \resumeItemListStart
+        \resumeItem{Engineered high-throughput event processing pipelines handling 100k requests/sec using Python, FastAPI, and Kafka.}
+        \resumeItem{Optimized PostgreSQL query latency by 42\% through indexing and pgvector vector similarity searches.}
+        \resumeItem{Implemented asynchronous job orchestration engines and microservices with Docker and Kubernetes on AWS.}
+      \resumeItemListEnd
+
+    \resumeSubheading
+      {Nexus Cloud Innovations}{San Jose, CA}
+      {Software Engineer Intern}{May 2021 -- Aug 2021}
+      \resumeItemListStart
+        \resumeItem{Constructed real-time WebSocket telemetry dashboard with Next.js, React, and TypeScript.}
+        \resumeItem{Reduced CI/CD build deployment times by 35\% using optimized GitHub Actions workflows.}
+      \resumeItemListEnd
+  \resumeSubHeadingListEnd
+
+%-----------PROJECTS-----------
+\section{Projects}
+    \resumeSubHeadingListStart
+      \resumeProjectHeading
+          {\textbf{Distributed Vector Search Engine} $|$ \emph{Python, Rust, FastAPI, Docker}}{Jan 2023 -- Present}
+          \resumeItemListStart
+            \resumeItem{Built a high-performance vector index engine supporting HNSW similarity lookups with sub-5ms p99 latency.}
+            \resumeItem{Integrated automated semantic caching layer in Redis reducing duplicate embedding calls by 60\%.}
+          \resumeItemListEnd
+    \resumeSubHeadingListEnd
+
+%-----------TECHNICAL SKILLS-----------
+\section{Technical Skills}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+     \textbf{Languages}{: Python, TypeScript, JavaScript, SQL, Go, Rust, C++} \\
+     \textbf{Frameworks \& Libraries}{: FastAPI, Next.js, React, PyTorch, LangChain, Node.js} \\
+     \textbf{Databases \& Storage}{: PostgreSQL, pgvector, Redis, MongoDB} \\
+     \textbf{Cloud \& DevOps}{: Docker, Kubernetes, AWS, CI/CD, Linux, Git}
+    }}
+ \end{itemize}
+
+\end{document}
