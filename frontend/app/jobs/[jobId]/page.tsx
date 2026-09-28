@@ -210,6 +210,14 @@ export default function JobMatchDetailPage() {
           </button>
 
           <Link
+            href={`/interview`}
+            className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-purple-500/20 transition-all flex items-center space-x-1.5"
+          >
+            <GraduationCap className="w-3.5 h-3.5 text-purple-200" />
+            <span>Interview Prep (Phase 12)</span>
+          </Link>
+
+          <Link
             href={`/jobs/${jobId}/referrals`}
             className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition-all flex items-center space-x-1.5"
           >

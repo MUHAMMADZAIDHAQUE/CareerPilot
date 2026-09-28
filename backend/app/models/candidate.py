@@ -70,6 +70,12 @@ class Candidate(TimeStampedBase):
     applications = relationship(
         "Application", back_populates="candidate", cascade="all, delete-orphan", lazy="selectin"
     )
+    interview_preparations = relationship(
+        "InterviewPreparation", back_populates="candidate", cascade="all, delete-orphan", lazy="selectin"
+    )
+    interview_sessions = relationship(
+        "InterviewSession", back_populates="candidate", cascade="all, delete-orphan", lazy="selectin"
+    )
 
 
 class Education(TimeStampedBase):

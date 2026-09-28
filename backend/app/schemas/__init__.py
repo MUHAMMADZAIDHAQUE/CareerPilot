@@ -99,6 +99,18 @@ from backend.app.schemas.application import (
     ApplicationResponse,
     KanbanBoardResponse,
 )
+from backend.app.schemas.interview import (
+    InterviewPrepGenerateRequest,
+    InterviewPreparationResponse,
+    EvaluationDetail,
+    InterviewTurnResponse,
+    FinalFeedbackDetail,
+    InterviewSessionStartRequest,
+    InterviewAnswerSubmitRequest,
+    InterviewSessionResponse,
+    QuestionContextItem,
+    PreparationTopicItem,
+)
 
 __all__ = [
     "HealthResponse",
@@ -185,4 +197,14 @@ __all__ = [
     "ApplicationUpdate",
     "ApplicationResponse",
     "KanbanBoardResponse",
+    "InterviewPrepGenerateRequest",
+    "InterviewPreparationResponse",
+    "EvaluationDetail",
+    "InterviewTurnResponse",
+    "FinalFeedbackDetail",
+    "InterviewSessionStartRequest",
+    "InterviewAnswerSubmitRequest",
+    "InterviewSessionResponse",
+    "QuestionContextItem",
+    "PreparationTopicItem",
 ]

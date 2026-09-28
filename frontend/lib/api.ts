@@ -1628,5 +1628,292 @@ export async function deleteApplicationApi(applicationId: string): Promise<ApiFe
   }
 }
 
+// ---------------------------------------------------------------------------
+// Phase 12: Interview Preparation & Simulation
+// ---------------------------------------------------------------------------
+
+export interface TechnicalQuestionItem {
+  id: string;
+  question: string;
+  topic: string;
+  difficulty?: string;
+  context_source?: string;
+  sample_good_points?: string[];
+}
+
+export interface ProjectQuestionItem {
+  id: string;
+  question: string;
+  project_name: string;
+  technologies?: string[];
+  rationale?: string;
+  context_source?: string;
+}
+
+export interface BehavioralQuestionItem {
+  id: string;
+  question: string;
+  competency: string;
+  context_source?: string;
+  star_framework_tip?: {
+    Situation?: string;
+    Task?: string;
+    Action?: string;
+    Result?: string;
+  };
+}
+
+export interface JDSpecificQuestionItem {
+  id: string;
+  question: string;
+  jd_requirement: string;
+  why_asked?: string;
+  context_source?: string;
+}
+
+export interface ResumeSpecificQuestionItem {
+  id: string;
+  question: string;
+  resume_claim: string;
+  verification_goal?: string;
+  context_source?: string;
+}
+
+export interface PreparationTopicItem {
+  topic: string;
+  category: string;
+  priority: "HIGH" | "MEDIUM" | "LOW";
+  key_concepts: string[];
+  recommended_prep: string;
+}
+
+export interface InterviewPreparation {
+  id: string;
+  job_id: string;
+  candidate_id?: string | null;
+  resume_version_id?: string | null;
+  company_name: string;
+  role: string;
+  technical_questions: TechnicalQuestionItem[];
+  project_questions: ProjectQuestionItem[];
+  behavioral_questions: BehavioralQuestionItem[];
+  jd_specific_questions: JDSpecificQuestionItem[];
+  resume_specific_questions: ResumeSpecificQuestionItem[];
+  follow_up_questions: Array<{ id: string; question: string; original_category?: string; probe_direction?: string }>;
+  suggested_preparation_topics: PreparationTopicItem[];
+  general_questions: Array<{ id: string; question: string; category: string; note?: string }>;
+  disclaimer: string;
+  created_at: string;
+}
+
+export interface EvaluationDetail {
+  technical_accuracy: number;
+  relevance: number;
+  clarity: number;
+  structure: number;
+  evidence: number;
+  communication: number;
+  overall_score: number;
+  strengths: string[];
+  weaknesses: string[];
+  feedback: string;
+  improvement_tips: string[];
+}
+
+export interface InterviewTurn {
+  id: string;
+  session_id: string;
+  turn_index: number;
+  category: string;
+  question: string;
+  context_source?: string | null;
+  candidate_answer?: string | null;
+  answered_at?: string | null;
+  evaluation?: EvaluationDetail | null;
+  follow_up_question?: string | null;
+  is_follow_up: boolean;
+  created_at: string;
+}
+
+export interface FinalFeedbackDetail {
+  overall_score: number;
+  category_scores: {
+    technical_accuracy: number;
+    relevance: number;
+    clarity: number;
+    structure: number;
+    evidence: number;
+    communication: number;
+  };
+  summary: string;
+  strengths: string[];
+  weak_areas: string[];
+  recommendations: string[];
+  preparation_topics_to_review: string[];
+}
+
+export interface InterviewSession {
+  id: string;
+  job_id: string;
+  candidate_id?: string | null;
+  resume_version_id?: string | null;
+  company_name?: string | null;
+  role?: string | null;
+  status: "IN_PROGRESS" | "COMPLETED" | "ABANDONED";
+  current_turn_index: number;
+  total_target_questions: number;
+  weak_areas: string[];
+  final_feedback?: FinalFeedbackDetail | null;
+  started_at: string;
+  completed_at?: string | null;
+  current_turn?: InterviewTurn | null;
+  turns: InterviewTurn[];
+}
+
+export async function fetchInterviewPrepApi(
+  jobId: string,
+  candidateId?: string,
+  forceRegenerate: boolean = false
+): Promise<ApiFetchResult<InterviewPreparation>> {
+  const startTime = performance.now();
+  try {
+    const url = new URL(`${BASE_HOST}/api/interview/prep/${encodeURIComponent(jobId)}`);
+    if (candidateId) url.searchParams.append("candidate_id", candidateId);
+    if (forceRegenerate) url.searchParams.append("force_regenerate", "true");
+
+    const res = await fetch(url.toString(), {
+      method: "POST",
+      headers: { "Accept": "application/json" },
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: InterviewPreparation = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to fetch interview prep kit", latencyMs };
+  }
+}
+
+export async function startInterviewSessionApi(payload: {
+  job_id: string;
+  candidate_id?: string;
+  resume_version_id?: string;
+  total_questions?: number;
+}): Promise<ApiFetchResult<InterviewSession>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/interview/sessions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: InterviewSession = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to start interview session", latencyMs };
+  }
+}
+
+export async function getInterviewSessionApi(sessionId: string): Promise<ApiFetchResult<InterviewSession>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/interview/sessions/${encodeURIComponent(sessionId)}`, {
+      headers: { "Accept": "application/json" },
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: InterviewSession = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to get interview session", latencyMs };
+  }
+}
+
+export async function listInterviewSessionsApi(jobId?: string): Promise<ApiFetchResult<InterviewSession[]>> {
+  const startTime = performance.now();
+  try {
+    const url = new URL(`${BASE_HOST}/api/interview/sessions`);
+    if (jobId) url.searchParams.append("job_id", jobId);
+
+    const res = await fetch(url.toString(), {
+      headers: { "Accept": "application/json" },
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: InterviewSession[] = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to list interview sessions", latencyMs };
+  }
+}
+
+export async function submitInterviewAnswerApi(
+  sessionId: string,
+  answer: string
+): Promise<ApiFetchResult<InterviewSession>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/interview/sessions/${encodeURIComponent(sessionId)}/answer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answer }),
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: InterviewSession = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to submit answer", latencyMs };
+  }
+}
+
+export async function finishInterviewSessionApi(sessionId: string): Promise<ApiFetchResult<InterviewSession>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/interview/sessions/${encodeURIComponent(sessionId)}/finish`, {
+      method: "POST",
+      headers: { "Accept": "application/json" },
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: InterviewSession = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to finish interview session", latencyMs };
+  }
+}
+
 
 

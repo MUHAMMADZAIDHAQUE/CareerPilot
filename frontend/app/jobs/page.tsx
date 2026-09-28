@@ -28,6 +28,7 @@ import {
   Share2,
   Users,
   Kanban,
+  GraduationCap,
 } from "lucide-react";
 import {
   fetchJobsApi,
@@ -248,6 +249,14 @@ export default function JobDiscoveryDashboard() {
               >
                 <Kanban className="w-3.5 h-3.5 text-amber-400" />
                 <span>CRM Board</span>
+              </Link>
+
+              <Link
+                href="/interview"
+                className="px-3.5 py-2.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-xs font-semibold text-purple-200 hover:text-white flex items-center space-x-1.5 transition-all shadow-sm"
+              >
+                <GraduationCap className="w-3.5 h-3.5 text-purple-400" />
+                <span>Interview Prep</span>
               </Link>
 
               <Link

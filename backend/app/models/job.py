@@ -83,6 +83,18 @@ class Job(TimeStampedBase):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    interview_preparations = relationship(
+        "InterviewPreparation",
+        back_populates="job",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    interview_sessions = relationship(
+        "InterviewSession",
+        back_populates="job",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
 
 class JobRequirement(TimeStampedBase):
