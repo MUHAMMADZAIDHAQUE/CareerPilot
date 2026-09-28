@@ -402,6 +402,19 @@ export interface Job {
   preferred_skills: string[];
   inferred_concepts: string[];
   requirements: JobRequirementItem[];
+
+  // Phase 8: Discovery & Sourcing Metadata
+  source_type?: string;
+  source_name?: string;
+  canonical_url?: string | null;
+  external_id?: string | null;
+  is_active?: boolean;
+  is_expired?: boolean;
+  match_score?: number | null;
+  matched_skills?: string[];
+  missing_required_skills?: string[];
+  missing_preferred_skills?: string[];
+
   created_at: string;
   updated_at: string;
 }
@@ -411,6 +424,88 @@ export interface AnalyzeJobPayload {
   job_url?: string;
   company?: string;
   role?: string;
+}
+
+export interface JobFilterParams {
+  role?: string;
+  company?: string;
+  location?: string;
+  skills?: string;
+  source?: string;
+  is_active?: boolean;
+  min_match_score?: number;
+  candidate_id?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface JobUrlImportPayload {
+  url: string;
+  company?: string;
+  role?: string;
+  source_name?: string;
+}
+
+export interface JobUrlImportResult {
+  job: Job;
+  is_duplicate: boolean;
+  is_expired: boolean;
+  canonical_url: string;
+  message: string;
+}
+
+export interface JobImportItemPayload {
+  company: string;
+  role: string;
+  description: string;
+  location?: string;
+  employment_type?: string;
+  url?: string;
+  salary?: string;
+  deadline?: string;
+  external_id?: string;
+  required_skills?: string[];
+  preferred_skills?: string[];
+}
+
+export interface JobBulkImportPayload {
+  source_type: "url_import" | "public_feed" | "career_page" | "user_configured";
+  source_name?: string;
+  feed_url?: string;
+  jobs?: JobImportItemPayload[];
+}
+
+export interface JobBulkImportResult {
+  total_processed: number;
+  imported_count: number;
+  duplicate_count: number;
+  expired_count: number;
+  results: Array<{
+    job_id?: string;
+    company: string;
+    role: string;
+    canonical_url?: string;
+    status: string;
+    is_duplicate: boolean;
+    message: string;
+  }>;
+  jobs: Job[];
+}
+
+export interface RecommendedJobItem {
+  job: Job;
+  overall_match_score: number;
+  matched_skills: string[];
+  missing_required_skills: string[];
+  missing_preferred_skills: string[];
+  recommendation_reason: string;
+}
+
+export interface RecommendedJobsResult {
+  candidate_id?: string;
+  candidate_name?: string;
+  total_recommendations: number;
+  recommendations: RecommendedJobItem[];
 }
 
 export async function analyzeJobApi(payload: AnalyzeJobPayload): Promise<ApiFetchResult<Job>> {
@@ -460,10 +555,26 @@ export async function fetchJobApi(jobId: string): Promise<ApiFetchResult<Job>> {
   }
 }
 
-export async function fetchRecentJobsApi(): Promise<ApiFetchResult<Job[]>> {
+export async function fetchJobsApi(params?: JobFilterParams): Promise<ApiFetchResult<Job[]>> {
   const startTime = performance.now();
   try {
-    const res = await fetch(`${BASE_HOST}/api/jobs`, {
+    const query = new URLSearchParams();
+    if (params) {
+      if (params.role) query.set("role", params.role);
+      if (params.company) query.set("company", params.company);
+      if (params.location) query.set("location", params.location);
+      if (params.skills) query.set("skills", params.skills);
+      if (params.source) query.set("source", params.source);
+      if (params.is_active !== undefined) query.set("is_active", String(params.is_active));
+      if (params.min_match_score !== undefined) query.set("min_match_score", String(params.min_match_score));
+      if (params.candidate_id) query.set("candidate_id", params.candidate_id);
+      if (params.limit !== undefined) query.set("limit", String(params.limit));
+      if (params.offset !== undefined) query.set("offset", String(params.offset));
+    }
+    const qs = query.toString();
+    const url = `${BASE_HOST}/api/jobs${qs ? `?${qs}` : ""}`;
+
+    const res = await fetch(url, {
       cache: "no-store",
       headers: { "Accept": "application/json" },
     });
@@ -477,6 +588,91 @@ export async function fetchRecentJobsApi(): Promise<ApiFetchResult<Job[]>> {
   } catch (err: any) {
     const latencyMs = Math.round(performance.now() - startTime);
     return { data: [], error: err?.message || "Failed to list jobs", latencyMs };
+  }
+}
+
+export async function fetchRecentJobsApi(): Promise<ApiFetchResult<Job[]>> {
+  return fetchJobsApi({ limit: 30 });
+}
+
+export async function importJobUrlApi(payload: JobUrlImportPayload): Promise<ApiFetchResult<JobUrlImportResult>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/jobs/import-url`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || err.message || `Status ${res.status}`, latencyMs };
+    }
+    const data: JobUrlImportResult = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to import job from URL", latencyMs };
+  }
+}
+
+export async function importBulkJobsApi(payload: JobBulkImportPayload): Promise<ApiFetchResult<JobBulkImportResult>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/jobs/import`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || err.message || `Status ${res.status}`, latencyMs };
+    }
+    const data: JobBulkImportResult = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to batch import jobs", latencyMs };
+  }
+}
+
+export async function fetchRecommendedJobsApi(
+  candidateId?: string,
+  minScore = 0.0,
+  limit = 30
+): Promise<ApiFetchResult<RecommendedJobsResult>> {
+  const startTime = performance.now();
+  try {
+    const query = new URLSearchParams();
+    if (candidateId) query.set("candidate_id", candidateId);
+    if (minScore > 0) query.set("min_score", String(minScore));
+    if (limit) query.set("limit", String(limit));
+
+    const qs = query.toString();
+    const url = `${BASE_HOST}/api/jobs/recommended${qs ? `?${qs}` : ""}`;
+
+    const res = await fetch(url, {
+      cache: "no-store",
+      headers: { "Accept": "application/json" },
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return {
+        data: null,
+        error: err.detail || `Status ${res.status}`,
+        latencyMs,
+      };
+    }
+    const data: RecommendedJobsResult = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to fetch recommendations", latencyMs };
   }
 }
 

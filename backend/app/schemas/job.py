@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, HttpUrl, ConfigDict
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 
@@ -76,7 +76,104 @@ class JobResponse(BaseModel):
     preferred_skills: List[str] = Field(default_factory=list)
     inferred_concepts: List[str] = Field(default_factory=list)
     requirements: List[JobRequirementResponse] = Field(default_factory=list)
+
+    # Phase 8: Job Discovery metadata & Candidate Matching enrichment
+    source_type: Optional[str] = "direct"
+    source_name: Optional[str] = "Direct Entry"
+    canonical_url: Optional[str] = None
+    external_id: Optional[str] = None
+    is_active: bool = True
+    is_expired: bool = False
+    match_score: Optional[float] = None
+    matched_skills: Optional[List[str]] = None
+    missing_required_skills: Optional[List[str]] = None
+    missing_preferred_skills: Optional[List[str]] = None
+
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# -----------------------------------------------------------------------------
+# Phase 8: Discovery & Import Schemas
+# -----------------------------------------------------------------------------
+
+class JobUrlImportRequest(BaseModel):
+    """Payload for POST /api/jobs/import-url."""
+    url: str = Field(..., description="Job posting or career page URL")
+    company: Optional[str] = Field(None, description="Optional override or hint for company name")
+    role: Optional[str] = Field(None, description="Optional override or hint for role/title")
+    source_name: Optional[str] = Field(None, description="Optional source label (e.g. Greenhouse, Lever, Direct)")
+
+
+class JobImportItem(BaseModel):
+    """Structured job entry for batch or feed import."""
+    company: str = Field(..., min_length=1)
+    role: str = Field(..., min_length=1)
+    description: str = Field(..., min_length=20)
+    location: Optional[str] = "Remote"
+    employment_type: Optional[str] = "Full-time"
+    url: Optional[str] = None
+    salary: Optional[str] = None
+    deadline: Optional[str] = None
+    external_id: Optional[str] = None
+    required_skills: Optional[List[str]] = Field(default_factory=list)
+    preferred_skills: Optional[List[str]] = Field(default_factory=list)
+
+
+class JobBulkImportRequest(BaseModel):
+    """Payload for POST /api/jobs/import."""
+    source_type: str = Field("user_configured", description="Source type: url_import, public_feed, career_page, user_configured")
+    source_name: Optional[str] = Field("Custom Import", description="Human-readable source label")
+    feed_url: Optional[str] = Field(None, description="URL of public feed or authorized API")
+    jobs: Optional[List[JobImportItem]] = Field(None, description="List of structured jobs to import")
+
+
+class JobImportResultItem(BaseModel):
+    """Per-job outcome in import operations."""
+    job_id: Optional[str] = None
+    company: str
+    role: str
+    canonical_url: Optional[str] = None
+    status: str  # "imported" | "duplicate" | "expired" | "error"
+    is_duplicate: bool = False
+    message: str
+
+
+class JobBulkImportResponse(BaseModel):
+    """Response returned by POST /api/jobs/import."""
+    total_processed: int
+    imported_count: int
+    duplicate_count: int
+    expired_count: int
+    results: List[JobImportResultItem]
+    jobs: List[JobResponse]
+
+
+class JobUrlImportResponse(BaseModel):
+    """Response returned by POST /api/jobs/import-url."""
+    job: JobResponse
+    is_duplicate: bool = False
+    is_expired: bool = False
+    canonical_url: str
+    message: str
+
+
+class RecommendedJobItem(BaseModel):
+    """Enriched job opportunity with candidate match score and skill gaps."""
+    job: JobResponse
+    overall_match_score: float
+    matched_skills: List[str]
+    missing_required_skills: List[str]
+    missing_preferred_skills: List[str]
+    project_relevance_summary: Optional[str] = None
+    recommendation_reason: str
+
+
+class RecommendedJobsResponse(BaseModel):
+    """Response returned by GET /api/jobs/recommended."""
+    candidate_id: Optional[str] = None
+    candidate_name: Optional[str] = None
+    total_recommendations: int
+    recommendations: List[RecommendedJobItem]

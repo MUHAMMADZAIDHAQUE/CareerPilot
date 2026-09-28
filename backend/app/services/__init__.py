@@ -5,6 +5,7 @@ from backend.app.services.matching_service import MatchingService
 from backend.app.services.embedding_service import EmbeddingService
 from backend.app.services.resume_tailor_service import ResumeTailorService
 from backend.app.services.latex_compiler_service import LaTeXCompilerService
+from backend.app.services.job_discovery import JobDiscoveryService
 
 __all__ = [
     "ProfileService",
@@ -14,4 +15,5 @@ __all__ = [
     "EmbeddingService",
     "ResumeTailorService",
     "LaTeXCompilerService",
+    "JobDiscoveryService",
 ]

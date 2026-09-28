@@ -1,4 +1,4 @@
-from sqlalchemy import String, Text, ForeignKey, Float, JSON
+from sqlalchemy import String, Text, ForeignKey, Float, JSON, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from pgvector.sqlalchemy import Vector
 from typing import List, Optional, Dict, Any
@@ -24,6 +24,15 @@ class Job(TimeStampedBase):
     application_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     deadline: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     experience_requirement: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Phase 8: Job Discovery & Sourcing Metadata
+    source_type: Mapped[str] = mapped_column(String(50), default="direct", index=True, nullable=False)  # "direct" | "url_import" | "public_feed" | "career_page" | "user_configured"
+    source_name: Mapped[str] = mapped_column(String(100), default="Direct Entry", nullable=False)
+    canonical_url: Mapped[Optional[str]] = mapped_column(String(500), index=True, nullable=True)
+    external_id: Mapped[Optional[str]] = mapped_column(String(255), index=True, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True, nullable=False)
+    is_expired: Mapped[bool] = mapped_column(Boolean, default=False, index=True, nullable=False)
+    dedup_hash: Mapped[Optional[str]] = mapped_column(String(64), index=True, nullable=True)
     
     # Structured collections
     education_requirements: Mapped[List[str]] = mapped_column(JSON, default=list, nullable=False)
