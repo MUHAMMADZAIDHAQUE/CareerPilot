@@ -13,18 +13,21 @@ import {
   UploadCloud,
   CheckCircle2,
   Briefcase,
-  Sparkles,
+  Upload,
+  FileText,
 } from "lucide-react";
 
 interface ProfileHeroProps {
   candidate: Candidate | null;
   onOpenImportModal: () => void;
+  onOpenUploadModal: () => void;
   onRefresh: () => void;
 }
 
 export default function ProfileHero({
   candidate,
   onOpenImportModal,
+  onOpenUploadModal,
   onRefresh,
 }: ProfileHeroProps) {
   if (!candidate) {
@@ -36,16 +39,25 @@ export default function ProfileHero({
         <div>
           <h2 className="text-xl font-bold text-white">No Candidate Profile Found</h2>
           <p className="text-sm text-slate-400 mt-1 max-w-md mx-auto">
-            Get started by importing your structured resume JSON or loading a sample profile.
+            Upload your resume (.pdf, .tex, .txt) or import structured JSON to initialize your verified profile.
           </p>
         </div>
-        <button
-          onClick={onOpenImportModal}
-          className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold shadow-lg shadow-brand-500/20 transition-all"
-        >
-          <UploadCloud className="w-4 h-4" />
-          <span>Import Structured Resume</span>
-        </button>
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          <button
+            onClick={onOpenUploadModal}
+            className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white text-sm font-semibold shadow-lg shadow-brand-500/20 transition-all"
+          >
+            <Upload className="w-4 h-4" />
+            <span>Upload Resume File (.pdf, .tex)</span>
+          </button>
+          <button
+            onClick={onOpenImportModal}
+            className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors"
+          >
+            <UploadCloud className="w-4 h-4 text-brand-400" />
+            <span>Paste / Load JSON</span>
+          </button>
+        </div>
       </div>
     );
   }
@@ -84,11 +96,18 @@ export default function ProfileHero({
         {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2.5">
           <button
+            onClick={onOpenUploadModal}
+            className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white text-xs font-semibold shadow-lg shadow-brand-500/20 transition-all"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span>Upload Resume File</span>
+          </button>
+          <button
             onClick={onOpenImportModal}
             className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700/80 transition-colors"
           >
             <UploadCloud className="w-3.5 h-3.5 text-brand-400" />
-            <span>Import / Refresh JSON</span>
+            <span>Paste JSON</span>
           </button>
         </div>
       </div>

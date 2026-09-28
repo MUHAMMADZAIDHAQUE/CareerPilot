@@ -29,6 +29,12 @@ from backend.app.schemas.candidate import (
     CareerPreferenceRead,
     StructuredResumeImport,
 )
+from backend.app.schemas.resume import (
+    ResumeDocumentRead,
+    ResumeUploadResponse,
+    ResumeConfirmRequest,
+    ResumeConfirmResponse,
+)
 
 __all__ = [
     "HealthResponse",
@@ -61,4 +67,8 @@ __all__ = [
     "CareerPreferenceUpdate",
     "CareerPreferenceRead",
     "StructuredResumeImport",
+    "ResumeDocumentRead",
+    "ResumeUploadResponse",
+    "ResumeConfirmRequest",
+    "ResumeConfirmResponse",
 ]

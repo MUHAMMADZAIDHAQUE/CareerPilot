@@ -49,6 +49,9 @@ class Candidate(TimeStampedBase):
     resume_templates: Mapped[List["ResumeTemplate"]] = relationship(
         "ResumeTemplate", back_populates="candidate", cascade="all, delete-orphan", lazy="selectin"
     )
+    resume_documents: Mapped[List["ResumeDocument"]] = relationship(
+        "ResumeDocument", back_populates="candidate", lazy="selectin"
+    )
 
 
 class Education(TimeStampedBase):

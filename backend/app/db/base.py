@@ -4,6 +4,16 @@ import datetime
 import uuid
 
 
+from pgvector.sqlalchemy import Vector
+from sqlalchemy.ext.compiler import compiles
+
+
+# Allow SQLite to compile Vector columns as BLOB for testing and local fallback
+@compiles(Vector, "sqlite")
+def compile_vector_sqlite(type_, compiler, **kw):
+    return "BLOB"
+
+
 class Base(DeclarativeBase):
     """Base model class for all SQLAlchemy ORM entities."""
     pass

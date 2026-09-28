@@ -1,21 +1,18 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { fetchCandidateProfile, Candidate, Experience, Education } from "@/lib/api";
+import { fetchCandidateProfile, Candidate } from "@/lib/api";
 import ProfileNav from "@/components/ProfileNav";
 import ProfileHero from "@/components/ProfileHero";
 import StructuredImportModal from "@/components/StructuredImportModal";
+import ResumeUploadModal from "@/components/ResumeUploadModal";
 import {
   Briefcase,
   GraduationCap,
   Award,
   Calendar,
   MapPin,
-  Plus,
-  Layers,
   Sparkles,
-  CheckCircle2,
-  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -23,6 +20,7 @@ export default function ProfilePage() {
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   const loadProfile = async () => {
     setIsLoading(true);
@@ -44,6 +42,7 @@ export default function ProfilePage() {
       <ProfileHero
         candidate={candidate}
         onOpenImportModal={() => setIsImportModalOpen(true)}
+        onOpenUploadModal={() => setIsUploadModalOpen(true)}
         onRefresh={loadProfile}
       />
 
@@ -63,7 +62,7 @@ export default function ProfilePage() {
 
             {candidate.experiences.length === 0 ? (
               <div className="glass-card rounded-xl p-8 text-center text-slate-400 text-sm border-dashed border border-slate-700">
-                No work experience records found. Click &quot;Import / Refresh JSON&quot; above to add.
+                No work experience records found. Click &quot;Upload Resume File&quot; above to upload your resume.
               </div>
             ) : (
               <div className="space-y-4">
@@ -235,6 +234,13 @@ export default function ProfilePage() {
       <StructuredImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
+        onSuccess={(updated) => setCandidate(updated)}
+      />
+
+      {/* Resume File Upload Modal */}
+      <ResumeUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
         onSuccess={(updated) => setCandidate(updated)}
       />
     </div>
