@@ -55,6 +55,9 @@ class Candidate(TimeStampedBase):
     match_results: Mapped[List["MatchResult"]] = relationship(
         "MatchResult", back_populates="candidate", cascade="all, delete-orphan", lazy="selectin"
     )
+    resume_versions: Mapped[List["ResumeVersion"]] = relationship(
+        "ResumeVersion", back_populates="candidate", cascade="all, delete-orphan", lazy="selectin"
+    )
 
 
 class Education(TimeStampedBase):

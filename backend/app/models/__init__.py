@@ -9,7 +9,7 @@ from backend.app.models.candidate import (
     CareerPreference,
     ResumeTemplate,
 )
-from backend.app.models.resume import ResumeDocument
+from backend.app.models.resume import ResumeDocument, ResumeVersion
 from backend.app.models.job import Job, JobRequirement, JobPosting, MatchResult
 
 __all__ = [
@@ -23,6 +23,7 @@ __all__ = [
     "CareerPreference",
     "ResumeTemplate",
     "ResumeDocument",
+    "ResumeVersion",
     "Job",
     "JobRequirement",
     "JobPosting",

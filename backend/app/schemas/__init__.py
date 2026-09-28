@@ -50,6 +50,15 @@ from backend.app.schemas.matching import (
     RelevantProjectMatch,
     MatchResponse,
 )
+from backend.app.schemas.tailoring import (
+    TailorResumeRequest,
+    ValidationCheckItem,
+    ValidationReport,
+    SectionDiff,
+    DiffSummary,
+    ResumeVersionRead,
+    TailorResumeResponse,
+)
 
 __all__ = [
     "HealthResponse",
@@ -96,4 +105,11 @@ __all__ = [
     "EvidenceItem",
     "RelevantProjectMatch",
     "MatchResponse",
+    "TailorResumeRequest",
+    "ValidationCheckItem",
+    "ValidationReport",
+    "SectionDiff",
+    "DiffSummary",
+    "ResumeVersionRead",
+    "TailorResumeResponse",
 ]

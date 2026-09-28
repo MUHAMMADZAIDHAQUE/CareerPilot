@@ -12,6 +12,12 @@ from backend.app.schemas.resume import (
     ResumeConfirmResponse,
     ResumeDocumentRead,
 )
+from backend.app.schemas.tailoring import (
+    TailorResumeRequest,
+    TailorResumeResponse,
+    ResumeVersionRead,
+)
+from backend.app.services.resume_tailor_service import ResumeTailorService
 from backend.app.schemas.candidate import CandidateRead
 from backend.app.models.resume import ResumeDocument
 from sqlalchemy import select
@@ -133,3 +139,122 @@ async def list_resume_documents(
     stmt = stmt.order_by(ResumeDocument.created_at.desc())
     res = await db.execute(stmt)
     return list(res.scalars().all())
+
+
+@router.post(
+    "/tailor/{job_id}",
+    response_model=TailorResumeResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Generate Job-Specific Tailored LaTeX Resume",
+    description="Evidence-based resume tailoring agent. Produces grounded LaTeX resume, verifies with Validator Agent, and records structured diffs.",
+)
+async def tailor_resume_for_job(
+    job_id: str,
+    payload: Optional[TailorResumeRequest] = None,
+    db: AsyncSession = Depends(get_db),
+) -> TailorResumeResponse:
+    try:
+        return await ResumeTailorService.tailor_resume_for_job(
+            session=db,
+            job_id=job_id,
+            payload=payload,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        logger.error(f"Tailoring resume failed for job {job_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Resume tailoring error: {str(e)}",
+        )
+
+
+@router.get(
+    "/tailor/{job_id}",
+    response_model=Optional[ResumeVersionRead],
+    summary="Get Latest Tailored Resume Version for Job",
+)
+async def get_latest_tailored_resume(
+    job_id: str,
+    candidate_id: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+) -> Optional[ResumeVersionRead]:
+    record = await ResumeTailorService.get_latest_tailored_version(
+        session=db,
+        job_id=job_id,
+        candidate_id=candidate_id,
+    )
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No tailored resume version found for job {job_id}",
+        )
+    return record
+
+
+@router.get(
+    "/versions/{version_id}",
+    response_model=ResumeVersionRead,
+    summary="Get Specific Tailored Resume Version by ID",
+)
+async def get_tailored_resume_version(
+    version_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> ResumeVersionRead:
+    record = await ResumeTailorService.get_version_by_id(
+        session=db,
+        version_id=version_id,
+    )
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Resume version '{version_id}' not found",
+        )
+    return record
+
+
+# -----------------------------------------------------------------------------
+# Pluralized Alias Router (/api/resumes/...)
+# -----------------------------------------------------------------------------
+resumes_router = APIRouter(prefix="/resumes", tags=["Resume Tailoring (Plural Alias)"])
+
+
+@resumes_router.post(
+    "/tailor/{job_id}",
+    response_model=TailorResumeResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Generate Job-Specific Tailored LaTeX Resume (Alias)",
+)
+async def tailor_resume_for_job_alias(
+    job_id: str,
+    payload: Optional[TailorResumeRequest] = None,
+    db: AsyncSession = Depends(get_db),
+) -> TailorResumeResponse:
+    return await tailor_resume_for_job(job_id=job_id, payload=payload, db=db)
+
+
+@resumes_router.get(
+    "/tailor/{job_id}",
+    response_model=Optional[ResumeVersionRead],
+    summary="Get Latest Tailored Resume Version for Job (Alias)",
+)
+async def get_latest_tailored_resume_alias(
+    job_id: str,
+    candidate_id: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+) -> Optional[ResumeVersionRead]:
+    return await get_latest_tailored_resume(job_id=job_id, candidate_id=candidate_id, db=db)
+
+
+@resumes_router.get(
+    "/versions/{version_id}",
+    response_model=ResumeVersionRead,
+    summary="Get Specific Tailored Resume Version by ID (Alias)",
+)
+async def get_tailored_resume_version_alias(
+    version_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> ResumeVersionRead:
+    return await get_tailored_resume_version(version_id=version_id, db=db)
+
+

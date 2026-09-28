@@ -50,6 +50,12 @@ class Job(TimeStampedBase):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    resume_versions: Mapped[List["ResumeVersion"]] = relationship(
+        "ResumeVersion",
+        back_populates="job",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
 
 class JobRequirement(TimeStampedBase):

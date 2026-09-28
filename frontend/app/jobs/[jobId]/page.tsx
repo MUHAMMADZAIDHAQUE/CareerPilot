@@ -24,14 +24,20 @@ import {
   ShieldCheck,
   FolderGit2,
   FileText,
+  FileCode,
+  Wand2,
 } from "lucide-react";
 import {
   fetchJobApi,
   matchCandidateToJobApi,
   fetchLatestMatchApi,
+  tailorResumeApi,
+  fetchLatestTailoredResumeApi,
   Job,
   MatchResponse,
+  TailorResumeResponse,
 } from "@/lib/api";
+import TailoredResumeStudio from "@/components/TailoredResumeStudio";
 
 export default function JobMatchDetailPage() {
   const params = useParams();
@@ -43,6 +49,12 @@ export default function JobMatchDetailPage() {
   const [loading, setLoading] = useState(true);
   const [matchingLoading, setMatchingLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Phase 6: Tailoring state
+  const [activeTab, setActiveTab] = useState<"match" | "tailor">("match");
+  const [tailorData, setTailorData] = useState<TailorResumeResponse | null>(null);
+  const [tailoringLoading, setTailoringLoading] = useState(false);
+  const [tailoringError, setTailoringError] = useState<string | null>(null);
 
   // Custom weights modal / state
   const [showWeightAdjuster, setShowWeightAdjuster] = useState(false);
@@ -103,6 +115,21 @@ export default function JobMatchDetailPage() {
     }
   };
 
+  const handleTailorResume = async (instructions?: string) => {
+    if (!jobId) return;
+    setTailoringLoading(true);
+    setTailoringError(null);
+    setActiveTab("tailor");
+
+    const res = await tailorResumeApi(jobId, { custom_instructions: instructions });
+    setTailoringLoading(false);
+    if (res.data) {
+      setTailorData(res.data);
+    } else {
+      setTailoringError(res.error || "Failed to tailor resume");
+    }
+  };
+
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-emerald-400 border-emerald-500/30 bg-emerald-500/10";
     if (score >= 60) return "text-amber-400 border-amber-500/30 bg-amber-500/10";
@@ -158,7 +185,21 @@ export default function JobMatchDetailPage() {
           <span className="text-brand-400 truncate max-w-xs">{job.role}</span>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("tailor");
+              if (!tailorData && !tailoringLoading) {
+                handleTailorResume();
+              }
+            }}
+            className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-brand-600 hover:from-purple-500 hover:to-brand-500 text-white text-xs font-bold shadow-md shadow-purple-500/20 transition-all flex items-center space-x-1.5"
+          >
+            <Wand2 className="w-3.5 h-3.5 text-purple-200" />
+            <span>Tailor Resume (Phase 6)</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setShowWeightAdjuster(!showWeightAdjuster)}
@@ -172,12 +213,54 @@ export default function JobMatchDetailPage() {
             type="button"
             onClick={handleRecalculateMatch}
             disabled={matchingLoading}
-            className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-brand-600 to-accent-cyan hover:from-brand-500 hover:to-accent-cyan text-white text-xs font-bold shadow-md shadow-brand-500/20 transition-all flex items-center space-x-1.5 disabled:opacity-50"
+            className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-xs font-bold shadow-sm transition-all flex items-center space-x-1.5 disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${matchingLoading ? "animate-spin" : ""}`} />
             <span>{matchingLoading ? "Matching..." : "Re-Score"}</span>
           </button>
         </div>
+      </div>
+
+      {/* Primary Tab Switcher */}
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-800/80 pb-4">
+        <button
+          onClick={() => setActiveTab("match")}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all ${
+            activeTab === "match"
+              ? "bg-brand-600 text-white shadow-md shadow-brand-500/20"
+              : "bg-slate-900/60 text-slate-400 hover:text-white border border-slate-800"
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Candidate–Job Match Evaluation</span>
+          {matchResult && (
+            <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-slate-950/60 font-mono text-emerald-300">
+              {matchResult.overall_match_score}%
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => {
+            setActiveTab("tailor");
+            if (!tailorData && !tailoringLoading) {
+              handleTailorResume();
+            }
+          }}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all ${
+            activeTab === "tailor"
+              ? "bg-gradient-to-r from-purple-600 to-brand-600 text-white shadow-md shadow-purple-500/20"
+              : "bg-slate-900/60 text-slate-400 hover:text-white border border-slate-800"
+          }`}
+        >
+          <FileCode className="w-3.5 h-3.5" />
+          <span>Evidence-Based Tailored Resume Studio</span>
+          {tailorData && (
+            <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-slate-950/60 font-mono text-purple-300">
+              v{tailorData.version.version_number}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Configurable Weights Drawer */}
@@ -266,10 +349,12 @@ export default function JobMatchDetailPage() {
         </div>
       )}
 
-      {/* Hero Score Card */}
-      {matchResult && (
-        <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl -z-10" />
+      {/* Tab 1: Match Result Content */}
+      {activeTab === "match" && matchResult && (
+        <div className="space-y-10 animate-fadeIn">
+          {/* Hero Score Card */}
+          <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl -z-10" />
 
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
             {/* Left: Overall Match Score Meter */}
@@ -390,10 +475,8 @@ export default function JobMatchDetailPage() {
             </p>
           </div>
         </div>
-      )}
 
-      {/* Skills Tri-Matrix: Matched vs Missing Required vs Missing Preferred */}
-      {matchResult && (
+        {/* Skills Tri-Matrix: Matched vs Missing Required vs Missing Preferred */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Matched Skills */}
           <div className="bg-slate-900/60 border border-emerald-500/30 rounded-2xl p-6 backdrop-blur-xl shadow-lg">
@@ -496,10 +579,9 @@ export default function JobMatchDetailPage() {
             </div>
           </div>
         </div>
-      )}
 
-      {/* Relevant Projects Section */}
-      {matchResult && matchResult.relevant_projects.length > 0 && (
+        {/* Relevant Projects Section */}
+        {matchResult.relevant_projects.length > 0 && (
         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 sm:p-8 backdrop-blur-xl shadow-xl space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-base text-white flex items-center space-x-2">
@@ -548,7 +630,7 @@ export default function JobMatchDetailPage() {
       )}
 
       {/* Grounded Evidence System (No Hallucination) */}
-      {matchResult && matchResult.evidence.length > 0 && (
+      {matchResult.evidence.length > 0 && (
         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 sm:p-8 backdrop-blur-xl shadow-xl space-y-6">
           <div className="flex items-center justify-between">
             <div>
@@ -602,6 +684,83 @@ export default function JobMatchDetailPage() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+    </div>
+  )}
+
+      {/* Tab 2: Phase 6 Tailored Resume Studio Content */}
+      {activeTab === "tailor" && (
+        <div className="space-y-6 animate-fadeIn">
+          {tailoringLoading && (
+            <div className="glass-card p-12 text-center border border-slate-700/60 rounded-3xl space-y-4">
+              <RefreshCw className="w-8 h-8 text-purple-400 animate-spin mx-auto" />
+              <h3 className="text-lg font-bold text-white">Synthesizing Evidence-Grounded LaTeX Resume</h3>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                Reordering skills, prioritizing relevant projects, aligning bullet points to {job.role} requirements, and executing the multi-agent Validator Audit...
+              </p>
+            </div>
+          )}
+
+          {tailoringError && (
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs flex items-center justify-between">
+              <span>{tailoringError}</span>
+              <button
+                onClick={() => handleTailorResume()}
+                className="px-3 py-1 rounded bg-red-500/20 hover:bg-red-500/30 text-white font-semibold"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {!tailorData && !tailoringLoading && (
+            <div className="glass-card p-8 border border-slate-700/60 rounded-3xl text-center space-y-6">
+              <div className="w-16 h-16 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center mx-auto">
+                <FileCode className="w-8 h-8" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">Evidence-Based Resume Tailoring Agent</h3>
+                <p className="text-sm text-slate-400 max-w-xl mx-auto mt-2">
+                  Produce a job-specific LaTeX resume directly tailored for {job.role} at {job.company}.
+                  Guaranteed zero hallucination: never invents facts, metrics, or experiences.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl mx-auto text-left">
+                <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                  <div className="text-xs font-semibold text-white mb-1">Reorder Skills</div>
+                  <div className="text-[11px] text-slate-400">Promotes target technologies ({job.required_skills?.slice(0, 3).join(", ")}) to the front.</div>
+                </div>
+                <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                  <div className="text-xs font-semibold text-white mb-1">Rank Projects</div>
+                  <div className="text-[11px] text-slate-400">Surfaces the most architecturally aligned portfolio projects.</div>
+                </div>
+                <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                  <div className="text-xs font-semibold text-white mb-1">Validator Audit</div>
+                  <div className="text-[11px] text-slate-400">Autonomous validator agent verifies 0 invented metrics or claims.</div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => handleTailorResume()}
+                className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-brand-600 hover:from-purple-500 hover:to-brand-500 text-sm font-bold text-white shadow-lg shadow-purple-500/25 transition-all inline-flex items-center space-x-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Generate Tailored LaTeX Resume</span>
+              </button>
+            </div>
+          )}
+
+          {tailorData && !tailoringLoading && (
+            <TailoredResumeStudio
+              tailorData={tailorData}
+              jobRole={job.role}
+              companyName={job.company}
+              onRetailor={handleTailorResume}
+              isLoading={tailoringLoading}
+            />
+          )}
         </div>
       )}
 
