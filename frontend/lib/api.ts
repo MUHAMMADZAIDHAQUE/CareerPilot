@@ -2121,6 +2121,181 @@ export async function fetchLatestGitHubAnalysisApi(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Phase 15: Main CareerPilot Dashboard
+// ---------------------------------------------------------------------------
+
+export interface ProfileCompletionSummary {
+  score: number;
+  candidate_name?: string | null;
+  candidate_headline?: string | null;
+  skills_count: number;
+  experiences_count: number;
+  education_count: number;
+  projects_count: number;
+  has_master_resume: boolean;
+  has_github_linked: boolean;
+  completed_items: string[];
+  missing_items: string[];
+}
+
+export interface JobsDiscoveredSummary {
+  total_jobs: number;
+  active_jobs: number;
+  sources_breakdown: Record<string, number>;
+  recent_jobs: Array<{
+    id: string;
+    company: string;
+    role: string;
+    location: string;
+    source_type: string;
+    source_name: string;
+    created_at?: string | null;
+  }>;
+}
+
+export interface StrongMatchItem {
+  job_id: string;
+  company: string;
+  role: string;
+  location?: string | null;
+  match_score: number;
+  matched_skills: string[];
+  missing_skills: string[];
+  created_at?: string | null;
+}
+
+export interface ApplicationDashboardSummary {
+  total_applications: number;
+  by_status: Record<string, number>;
+  recent_applications: Array<{
+    id: string;
+    job_id: string;
+    company: string;
+    role: string;
+    status: string;
+    referral_status: string;
+    next_action?: string | null;
+    next_followup_date?: string | null;
+  }>;
+}
+
+export interface ReferralOpportunityItem {
+  job_id: string;
+  job_role: string;
+  job_company: string;
+  contact_id: string;
+  contact_name: string;
+  contact_company: string;
+  relationship_type: string;
+  relevance_reason: string;
+  status: string;
+}
+
+export interface PendingOutreachItem {
+  id: string;
+  job_id: string;
+  job_role: string;
+  job_company: string;
+  contact_name: string;
+  channel: string;
+  subject?: string | null;
+  body_snippet: string;
+  status: string;
+  created_at: string;
+}
+
+export interface DashboardInterviewItem {
+  id: string;
+  type: string;
+  company: string;
+  role: string;
+  stage_or_status: string;
+  score?: number | null;
+  updated_at?: string | null;
+}
+
+export interface SkillGapSummaryItem {
+  skill: string;
+  category: string;
+  frequency: number;
+  priority: string;
+  current_strength: string;
+}
+
+export interface RecommendedProjectSummaryItem {
+  title: string;
+  description: string;
+  focus_skills: string[];
+  deliverables: string;
+}
+
+export interface FollowupItem {
+  application_id: string;
+  job_id: string;
+  company: string;
+  role: string;
+  next_action: string;
+  followup_date: string;
+  is_overdue: boolean;
+  days_diff: number;
+}
+
+export interface PipelineCounts {
+  jobs_count: number;
+  matched_count: number;
+  tailored_resumes_count: number;
+  compiled_pdfs_count: number;
+  referrals_count: number;
+  outreaches_count: number;
+  pending_approvals_count: number;
+  applied_count: number;
+  interviews_count: number;
+}
+
+export interface DashboardSummaryResponse {
+  candidate_id?: string | null;
+  generated_at: string;
+  pipeline_counts: PipelineCounts;
+  profile_completion: ProfileCompletionSummary;
+  jobs_discovered: JobsDiscoveredSummary;
+  strong_matches: StrongMatchItem[];
+  applications: ApplicationDashboardSummary;
+  referral_opportunities: ReferralOpportunityItem[];
+  outreach_requiring_approval: PendingOutreachItem[];
+  interviews: DashboardInterviewItem[];
+  skill_gaps: SkillGapSummaryItem[];
+  recommended_projects: RecommendedProjectSummaryItem[];
+  follow_ups: FollowupItem[];
+}
+
+export async function fetchDashboardSummaryApi(
+  candidateId?: string
+): Promise<ApiFetchResult<DashboardSummaryResponse>> {
+  const startTime = performance.now();
+  try {
+    const url = new URL(`${BASE_HOST}/api/dashboard`);
+    if (candidateId) url.searchParams.append("candidate_id", candidateId);
+
+    const res = await fetch(url.toString(), {
+      headers: { "Accept": "application/json" },
+      cache: "no-store",
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: DashboardSummaryResponse = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to fetch dashboard summary", latencyMs };
+  }
+}
+
+
 
 
 

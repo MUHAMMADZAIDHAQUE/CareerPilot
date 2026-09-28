@@ -128,6 +128,21 @@ from backend.app.schemas.github import (
     GitHubAnalysisResponse,
 )
 
+from backend.app.schemas.dashboard import (
+    ProfileCompletionSummary,
+    JobsDiscoveredSummary,
+    StrongMatchItem,
+    ApplicationSummary,
+    ReferralOpportunityItem,
+    PendingOutreachItem,
+    InterviewItem,
+    SkillGapSummaryItem,
+    RecommendedProjectSummaryItem,
+    FollowupItem,
+    PipelineCounts,
+    DashboardSummaryResponse,
+)
+
 __all__ = [
     "HealthResponse",
     "DatabaseHealth",
@@ -235,4 +250,16 @@ __all__ = [
     "ResumeEvidenceItem",
     "RecommendedImprovementItem",
     "GitHubAnalysisResponse",
+    "ProfileCompletionSummary",
+    "JobsDiscoveredSummary",
+    "StrongMatchItem",
+    "ApplicationSummary",
+    "ReferralOpportunityItem",
+    "PendingOutreachItem",
+    "InterviewItem",
+    "SkillGapSummaryItem",
+    "RecommendedProjectSummaryItem",
+    "FollowupItem",
+    "PipelineCounts",
+    "DashboardSummaryResponse",
 ]

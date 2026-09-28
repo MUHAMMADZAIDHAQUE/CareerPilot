@@ -1,5 +1,17 @@
 from fastapi import APIRouter
-from backend.app.api.v1 import health, profile, resume, jobs, referrals, outreach, applications, interview, career, github
+from backend.app.api.v1 import (
+    health,
+    profile,
+    resume,
+    jobs,
+    referrals,
+    outreach,
+    applications,
+    interview,
+    career,
+    github,
+    dashboard,
+)
 
 api_router = APIRouter()
 
@@ -14,3 +26,5 @@ api_router.include_router(applications.router)
 api_router.include_router(interview.router)
 api_router.include_router(career.router)
 api_router.include_router(github.router)
+api_router.include_router(dashboard.router)
+
