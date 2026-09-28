@@ -26,6 +26,7 @@ import {
   FileText,
   FileCode,
   Wand2,
+  Users,
 } from "lucide-react";
 import {
   fetchJobApi,
@@ -186,6 +187,14 @@ export default function JobMatchDetailPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href={`/jobs/${jobId}/referrals`}
+            className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition-all flex items-center space-x-1.5"
+          >
+            <Users className="w-3.5 h-3.5 text-indigo-200" />
+            <span>Referrals (Phase 9)</span>
+          </Link>
+
           <button
             type="button"
             onClick={() => {
@@ -261,6 +270,14 @@ export default function JobMatchDetailPage() {
             </span>
           )}
         </button>
+
+        <Link
+          href={`/jobs/${jobId}/referrals`}
+          className="px-4 py-2.5 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all bg-slate-900/60 text-slate-300 hover:text-white border border-slate-800 hover:border-indigo-500/40"
+        >
+          <Users className="w-3.5 h-3.5 text-indigo-400" />
+          <span>Referral Discovery</span>
+        </Link>
       </div>
 
       {/* Configurable Weights Drawer */}

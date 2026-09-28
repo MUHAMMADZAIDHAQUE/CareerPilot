@@ -970,5 +970,244 @@ export function getResumePdfUrl(resumeVersionId: string, download = false): stri
   return `${BASE_HOST}/api/resumes/${encodeURIComponent(resumeVersionId)}/pdf${download ? "?download=true" : ""}`;
 }
 
+// -----------------------------------------------------------------------------
+// Phase 9: Referral Discovery & Contact Management Types & APIs
+// -----------------------------------------------------------------------------
+
+export interface Contact {
+  id?: string;
+  candidate_id?: string | null;
+  name: string;
+  company: string;
+  role: string;
+  department?: string | null;
+  source: string;
+  profile_url?: string | null;
+  email?: string | null;
+  relationship?: string | null;
+  notes?: string | null;
+  university?: string | null;
+  skills: string[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ReferralEvidence {
+  factor: string;
+  description?: string;
+  evidence: string;
+  score_contribution: number;
+}
+
+export interface ReferralScoreBreakdown {
+  same_company?: number;
+  same_university?: number;
+  relevant_department?: number;
+  same_field?: number;
+  role_relevance?: number;
+  total_score?: number;
+}
+
+export interface Referral {
+  id: string;
+  job_id: string;
+  contact_id: string;
+  candidate_id?: string | null;
+  relationship_type: string;
+  relevance_score: number;
+  relevance_reason: string;
+  status: "suggested" | "drafted" | "contacted" | "referred" | "declined" | "accepted" | string;
+  evidence: ReferralEvidence[];
+  score_breakdown: ReferralScoreBreakdown;
+  notes?: string | null;
+  contact?: Contact | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JobReferralsResult {
+  job_id: string;
+  company: string;
+  role: string;
+  total_opportunities: number;
+  referrals: Referral[];
+  ethical_policy_notice: string;
+}
+
+export async function fetchJobReferralsApi(jobId: string): Promise<ApiFetchResult<JobReferralsResult>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/jobs/${encodeURIComponent(jobId)}/referrals`, {
+      cache: "no-store",
+      headers: { "Accept": "application/json" },
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: JobReferralsResult = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to fetch job referrals", latencyMs };
+  }
+}
+
+export async function discoverJobReferralsApi(
+  jobId: string,
+  payload?: { candidate_id?: string; min_score?: number }
+): Promise<ApiFetchResult<JobReferralsResult>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/jobs/${encodeURIComponent(jobId)}/referrals`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload || {}),
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: JobReferralsResult = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to discover referrals", latencyMs };
+  }
+}
+
+export async function updateReferralStatusApi(
+  jobId: string,
+  referralId: string,
+  status: string,
+  notes?: string
+): Promise<ApiFetchResult<Referral>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(
+      `${BASE_HOST}/api/jobs/${encodeURIComponent(jobId)}/referrals/${encodeURIComponent(referralId)}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, notes }),
+      }
+    );
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: Referral = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to update referral status", latencyMs };
+  }
+}
+
+export async function fetchContactsApi(params?: {
+  company?: string;
+  search?: string;
+}): Promise<ApiFetchResult<Contact[]>> {
+  const startTime = performance.now();
+  try {
+    const searchParams = new URLSearchParams();
+    if (params?.company) searchParams.append("company", params.company);
+    if (params?.search) searchParams.append("search", params.search);
+
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    const res = await fetch(`${BASE_HOST}/api/contacts${query}`, {
+      cache: "no-store",
+      headers: { "Accept": "application/json" },
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: Contact[] = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to fetch contacts", latencyMs };
+  }
+}
+
+export async function createContactApi(payload: Partial<Contact>): Promise<ApiFetchResult<Contact>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/contacts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: Contact = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to create contact", latencyMs };
+  }
+}
+
+export async function updateContactApi(
+  contactId: string,
+  payload: Partial<Contact>
+): Promise<ApiFetchResult<Contact>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/contacts/${encodeURIComponent(contactId)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: Contact = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to update contact", latencyMs };
+  }
+}
+
+export async function deleteContactApi(
+  contactId: string
+): Promise<ApiFetchResult<{ success: boolean; message: string }>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/contacts/${encodeURIComponent(contactId)}`, {
+      method: "DELETE",
+      headers: { "Accept": "application/json" },
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to delete contact", latencyMs };
+  }
+}
+
 
 

@@ -71,6 +71,18 @@ from backend.app.schemas.compilation import (
     CompiledPDFResponse,
     CompilationErrorDetail,
 )
+from backend.app.schemas.referral import (
+    ContactBase,
+    ContactCreate,
+    ContactUpdate,
+    ContactResponse,
+    ReferralEvidenceItem,
+    ReferralScoreBreakdown,
+    ReferralResponse,
+    ReferralStatusUpdateRequest,
+    DiscoverReferralsRequest,
+    JobReferralsResponse,
+)
 
 __all__ = [
     "HealthResponse",
@@ -135,4 +147,14 @@ __all__ = [
     "CompilePDFRequest",
     "CompiledPDFResponse",
     "CompilationErrorDetail",
+    "ContactBase",
+    "ContactCreate",
+    "ContactUpdate",
+    "ContactResponse",
+    "ReferralEvidenceItem",
+    "ReferralScoreBreakdown",
+    "ReferralResponse",
+    "ReferralStatusUpdateRequest",
+    "DiscoverReferralsRequest",
+    "JobReferralsResponse",
 ]

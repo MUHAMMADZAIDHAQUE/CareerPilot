@@ -65,6 +65,12 @@ class Job(TimeStampedBase):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    referrals: Mapped[List["Referral"]] = relationship(
+        "Referral",
+        back_populates="job",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
 
 class JobRequirement(TimeStampedBase):

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from backend.app.api.v1 import health, profile, resume, jobs
+from backend.app.api.v1 import health, profile, resume, jobs, referrals
 
 api_router = APIRouter()
 
@@ -8,3 +8,4 @@ api_router.include_router(health.router)
 api_router.include_router(profile.router)
 api_router.include_router(resume.router)
 api_router.include_router(jobs.router)
+api_router.include_router(referrals.router)
