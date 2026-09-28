@@ -246,6 +246,11 @@ async def get_latest_tailored_resume_alias(
     return await get_latest_tailored_resume(job_id=job_id, candidate_id=candidate_id, db=db)
 
 
+from fastapi.responses import FileResponse
+from backend.app.schemas.compilation import CompilePDFRequest, CompiledPDFResponse
+from backend.app.services.latex_compiler_service import LaTeXCompilerService
+
+
 @resumes_router.get(
     "/versions/{version_id}",
     response_model=ResumeVersionRead,
@@ -256,5 +261,100 @@ async def get_tailored_resume_version_alias(
     db: AsyncSession = Depends(get_db),
 ) -> ResumeVersionRead:
     return await get_tailored_resume_version(version_id=version_id, db=db)
+
+
+# -----------------------------------------------------------------------------
+# LaTeX Compilation Endpoints (Phase 7)
+# -----------------------------------------------------------------------------
+
+@resumes_router.post(
+    "/{resume_version_id}/compile",
+    response_model=CompiledPDFResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Compile Tailored LaTeX Resume to PDF",
+)
+async def compile_resume_version(
+    resume_version_id: str,
+    payload: Optional[CompilePDFRequest] = None,
+    db: AsyncSession = Depends(get_db),
+) -> CompiledPDFResponse:
+    """
+    Compiles a validated tailored LaTeX resume into a publication-grade PDF.
+    Runs in an isolated sandbox, enforces security constraints, captures logs,
+    and associates the generated PDF with the candidate, job, and resume version.
+    """
+    try:
+        return await LaTeXCompilerService.compile_resume_version(
+            session=db,
+            resume_version_id=resume_version_id,
+            request=payload,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error compiling resume version '{resume_version_id}': {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"LaTeX compilation system failure: {str(e)}",
+        )
+
+
+@resumes_router.get(
+    "/{resume_version_id}/pdf",
+    summary="Download or Preview Compiled Resume PDF",
+)
+async def get_resume_version_pdf(
+    resume_version_id: str,
+    download: bool = Query(False, description="Set to true to force file download attachment"),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Streams the latest compiled PDF artifact for a resume version.
+    Returns inline preview by default or attachment if download=true.
+    """
+    pdf_record = await LaTeXCompilerService.get_latest_compiled_pdf(
+        session=db,
+        resume_version_id=resume_version_id,
+    )
+    if not pdf_record or not Path(pdf_record.file_path).exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No compiled PDF found for resume version '{resume_version_id}'. Please trigger compilation first.",
+        )
+
+    disposition = "attachment" if download else "inline"
+    return FileResponse(
+        path=pdf_record.file_path,
+        media_type="application/pdf",
+        filename=pdf_record.filename,
+        headers={"Content-Disposition": f'{disposition}; filename="{pdf_record.filename}"'},
+    )
+
+
+# Singular Router Aliases (/api/resume/...)
+@router.post(
+    "/{resume_version_id}/compile",
+    response_model=CompiledPDFResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Compile Tailored LaTeX Resume to PDF (Singular Alias)",
+)
+async def compile_resume_version_singular(
+    resume_version_id: str,
+    payload: Optional[CompilePDFRequest] = None,
+    db: AsyncSession = Depends(get_db),
+) -> CompiledPDFResponse:
+    return await compile_resume_version(resume_version_id=resume_version_id, payload=payload, db=db)
+
+
+@router.get(
+    "/{resume_version_id}/pdf",
+    summary="Download or Preview Compiled Resume PDF (Singular Alias)",
+)
+async def get_resume_version_pdf_singular(
+    resume_version_id: str,
+    download: bool = Query(False),
+    db: AsyncSession = Depends(get_db),
+):
+    return await get_resume_version_pdf(resume_version_id=resume_version_id, download=download, db=db)
 
 

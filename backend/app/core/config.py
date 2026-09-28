@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     DEFAULT_EMBEDDING_MODEL: str = "text-embedding-3-large"
     EMBEDDING_DIMENSION: int = 1536  # Default embedding size for OpenAI
 
+    # Storage Settings
+    GENERATED_PDF_DIR: str = "generated/resumes"
+    LATEX_TIMEOUT_SECONDS: int = 15
+
     @property
     def async_database_url(self) -> str:
         if self.DATABASE_URL:

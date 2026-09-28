@@ -706,5 +706,73 @@ export async function fetchLatestTailoredResumeApi(
   }
 }
 
+// -----------------------------------------------------------------------------
+// Phase 7: LaTeX Compilation & PDF Types & APIs
+// -----------------------------------------------------------------------------
+
+export interface CompilationErrorDetail {
+  line_number?: number | null;
+  error_type: string;
+  message: string;
+  snippet?: string | null;
+  missing_package?: string | null;
+}
+
+export interface CompilePDFRequest {
+  timeout_seconds?: number;
+  force_recompile?: boolean;
+}
+
+export interface CompiledPDFResponse {
+  id: string;
+  resume_version_id: string;
+  candidate_id: string;
+  job_id: string;
+  filename: string;
+  file_size_bytes: number;
+  compilation_status: "success" | "failed" | "timeout" | "security_violation";
+  compiler_used: string;
+  compilation_log: string;
+  error_message?: string | null;
+  error_details?: CompilationErrorDetail | null;
+  compile_duration_ms: number;
+  download_url: string;
+  preview_url: string;
+  created_at: string;
+}
+
+export async function compileResumePdfApi(
+  resumeVersionId: string,
+  payload?: CompilePDFRequest
+): Promise<ApiFetchResult<CompiledPDFResponse>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/resumes/${encodeURIComponent(resumeVersionId)}/compile`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload || {}),
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return {
+        data: null,
+        error: err.detail || err.message || `Status ${res.status}`,
+        latencyMs,
+      };
+    }
+    const data: CompiledPDFResponse = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to compile LaTeX to PDF", latencyMs };
+  }
+}
+
+export function getResumePdfUrl(resumeVersionId: string, download = false): string {
+  return `${BASE_HOST}/api/resumes/${encodeURIComponent(resumeVersionId)}/pdf${download ? "?download=true" : ""}`;
+}
+
 
 

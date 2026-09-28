@@ -42,7 +42,6 @@ from backend.app.schemas.job import (
     ParsedJobAnalysis,
     JobResponse,
 )
-
 from backend.app.schemas.matching import (
     MatchWeights,
     MatchRequest,
@@ -58,6 +57,11 @@ from backend.app.schemas.tailoring import (
     DiffSummary,
     ResumeVersionRead,
     TailorResumeResponse,
+)
+from backend.app.schemas.compilation import (
+    CompilePDFRequest,
+    CompiledPDFResponse,
+    CompilationErrorDetail,
 )
 
 __all__ = [
@@ -112,4 +116,7 @@ __all__ = [
     "DiffSummary",
     "ResumeVersionRead",
     "TailorResumeResponse",
+    "CompilePDFRequest",
+    "CompiledPDFResponse",
+    "CompilationErrorDetail",
 ]

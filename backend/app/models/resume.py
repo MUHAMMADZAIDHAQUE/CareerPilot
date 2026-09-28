@@ -53,4 +53,43 @@ class ResumeVersion(TimeStampedBase):
     candidate: Mapped["Candidate"] = relationship("Candidate", back_populates="resume_versions")
     job: Mapped["Job"] = relationship("Job", back_populates="resume_versions")
     source_resume: Mapped[Optional["ResumeDocument"]] = relationship("ResumeDocument", back_populates="versions")
+    compiled_pdfs: Mapped[List["CompiledResumePDF"]] = relationship(
+        "CompiledResumePDF", back_populates="resume_version", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+
+class CompiledResumePDF(TimeStampedBase):
+    """
+    Compiled PDF artifact generated from a validated LaTeX resume version.
+    Associated with candidate, job, and resume_version.
+    Captures full compilation logs, duration, compiler engine, and file metadata.
+    """
+    __tablename__ = "compiled_resume_pdfs"
+
+    resume_version_id: Mapped[str] = mapped_column(
+        String, ForeignKey("resume_versions.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    candidate_id: Mapped[str] = mapped_column(
+        String, ForeignKey("candidates.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    job_id: Mapped[str] = mapped_column(
+        String, ForeignKey("jobs.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+
+    file_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_size_bytes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    compilation_status: Mapped[str] = mapped_column(
+        String(50), default="success", index=True, nullable=False
+    )  # "success" | "failed" | "timeout" | "security_violation"
+    compiler_used: Mapped[str] = mapped_column(String(50), default="pdflatex", nullable=False)
+    compilation_log: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    compile_duration_ms: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # Relationships
+    resume_version: Mapped["ResumeVersion"] = relationship("ResumeVersion", back_populates="compiled_pdfs")
+    candidate: Mapped["Candidate"] = relationship("Candidate")
+    job: Mapped["Job"] = relationship("Job")
+
 
