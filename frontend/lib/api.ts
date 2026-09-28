@@ -1209,5 +1209,242 @@ export async function deleteContactApi(
   }
 }
 
+// -----------------------------------------------------------------------------
+// Phase 10: Outreach Agent Types & APIs
+// -----------------------------------------------------------------------------
+
+export interface OutreachMessage {
+  id: string;
+  job_id: string;
+  contact_id: string;
+  candidate_id?: string | null;
+  referral_id?: string | null;
+  channel: "email" | "linkedin" | string;
+  subject?: string | null;
+  body: string;
+  status: "DRAFT" | "NEEDS_REVIEW" | "APPROVED" | "SENT" | "REJECTED" | string;
+  relationship_context?: string | null;
+  project_highlight?: string | null;
+  metadata_json?: Record<string, any>;
+  approved_at?: string | null;
+  sent_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  contact?: Contact | null;
+  job?: { id: string; company: string; role: string } | null;
+}
+
+export interface OutreachGeneratePayload {
+  job_id: string;
+  contact_id: string;
+  candidate_id?: string;
+  referral_id?: string;
+  relevant_project_id?: string;
+  channel?: "all" | "email" | "linkedin";
+  custom_instructions?: string;
+}
+
+export interface OutreachBatchResult {
+  job_id: string;
+  contact_id: string;
+  company: string;
+  contact_name: string;
+  messages: OutreachMessage[];
+  ethical_protocol_notice: string;
+}
+
+export interface OutreachActionResult {
+  id: string;
+  status: string;
+  message: string;
+  approved_at?: string | null;
+  sent_at?: string | null;
+}
+
+export async function fetchOutreachMessagesApi(params?: {
+  job_id?: string;
+  contact_id?: string;
+  channel?: string;
+  status?: string;
+}): Promise<ApiFetchResult<OutreachMessage[]>> {
+  const startTime = performance.now();
+  try {
+    const searchParams = new URLSearchParams();
+    if (params?.job_id) searchParams.append("job_id", params.job_id);
+    if (params?.contact_id) searchParams.append("contact_id", params.contact_id);
+    if (params?.channel) searchParams.append("channel", params.channel);
+    if (params?.status) searchParams.append("status", params.status);
+
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    const res = await fetch(`${BASE_HOST}/api/outreach${query}`, {
+      cache: "no-store",
+      headers: { "Accept": "application/json" },
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: OutreachMessage[] = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to fetch outreach messages", latencyMs };
+  }
+}
+
+export async function fetchOutreachMessageApi(outreachId: string): Promise<ApiFetchResult<OutreachMessage>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/outreach/${encodeURIComponent(outreachId)}`, {
+      cache: "no-store",
+      headers: { "Accept": "application/json" },
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: OutreachMessage = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to fetch outreach draft", latencyMs };
+  }
+}
+
+export async function generateOutreachApi(payload: OutreachGeneratePayload): Promise<ApiFetchResult<OutreachBatchResult>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/outreach/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: OutreachBatchResult = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to generate outreach drafts", latencyMs };
+  }
+}
+
+export async function editOutreachApi(
+  outreachId: string,
+  payload: { subject?: string; body?: string; status?: string }
+): Promise<ApiFetchResult<OutreachMessage>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/outreach/${encodeURIComponent(outreachId)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: OutreachMessage = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to update outreach draft", latencyMs };
+  }
+}
+
+export async function approveOutreachApi(outreachId: string): Promise<ApiFetchResult<OutreachActionResult>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/outreach/${encodeURIComponent(outreachId)}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: OutreachActionResult = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to approve outreach draft", latencyMs };
+  }
+}
+
+export async function rejectOutreachApi(outreachId: string): Promise<ApiFetchResult<OutreachActionResult>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/outreach/${encodeURIComponent(outreachId)}/reject`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: OutreachActionResult = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to reject outreach draft", latencyMs };
+  }
+}
+
+export async function markOutreachSentApi(outreachId: string): Promise<ApiFetchResult<OutreachActionResult>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/outreach/${encodeURIComponent(outreachId)}/sent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: OutreachActionResult = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to mark outreach as sent", latencyMs };
+  }
+}
+
+export async function deleteOutreachApi(outreachId: string): Promise<ApiFetchResult<{ success: boolean; message: string }>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/outreach/${encodeURIComponent(outreachId)}`, {
+      method: "DELETE",
+      headers: { "Accept": "application/json" },
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to delete outreach message", latencyMs };
+  }
+}
+
 
 

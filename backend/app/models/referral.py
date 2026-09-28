@@ -37,6 +37,12 @@ class Contact(TimeStampedBase):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    outreach_messages = orm_relationship(
+        "Outreach",
+        back_populates="contact",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
 
 class Referral(TimeStampedBase):

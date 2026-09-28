@@ -2,17 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Activity, User, Award, FolderGit2, Layers, Briefcase } from "lucide-react";
+import { Compass, Activity, User, Award, FolderGit2, Layers, Briefcase, Send } from "lucide-react";
 
 export default function Header() {
   const pathname = usePathname();
 
   const navLinks = [
     { href: "/", label: "Overview", icon: Layers },
+    { href: "/jobs", label: "Jobs", icon: Briefcase },
     { href: "/jobs/analyze", label: "JD Analyzer", icon: Briefcase },
-    { href: "/profile", label: "Career Profile", icon: User },
-    { href: "/profile/skills", label: "Skills", icon: Award },
-    { href: "/profile/projects", label: "Projects", icon: FolderGit2 },
+    { href: "/outreach", label: "Outreach", icon: Send },
+    { href: "/profile", label: "Profile", icon: User },
     { href: "/health", label: "Diagnostics", icon: Activity },
   ];
 

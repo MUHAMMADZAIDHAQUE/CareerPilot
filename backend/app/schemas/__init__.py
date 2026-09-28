@@ -83,6 +83,15 @@ from backend.app.schemas.referral import (
     DiscoverReferralsRequest,
     JobReferralsResponse,
 )
+from backend.app.schemas.outreach import (
+    OutreachBase,
+    OutreachCreate,
+    OutreachUpdate,
+    OutreachResponse,
+    OutreachGenerateRequest,
+    OutreachBatchResponse,
+    OutreachActionResponse,
+)
 
 __all__ = [
     "HealthResponse",
@@ -157,4 +166,11 @@ __all__ = [
     "ReferralStatusUpdateRequest",
     "DiscoverReferralsRequest",
     "JobReferralsResponse",
+    "OutreachBase",
+    "OutreachCreate",
+    "OutreachUpdate",
+    "OutreachResponse",
+    "OutreachGenerateRequest",
+    "OutreachBatchResponse",
+    "OutreachActionResponse",
 ]

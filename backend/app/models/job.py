@@ -71,6 +71,12 @@ class Job(TimeStampedBase):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    outreach_messages = relationship(
+        "Outreach",
+        back_populates="job",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
 
 class JobRequirement(TimeStampedBase):

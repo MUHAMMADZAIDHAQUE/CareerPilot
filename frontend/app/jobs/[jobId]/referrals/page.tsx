@@ -678,7 +678,15 @@ export default function JobReferralsPage() {
 
                   {/* Outreach Status Selector & CRUD actions */}
                   <div className="flex items-center space-x-2 self-end md:self-auto">
-                    <span className="text-[11px] text-slate-400 font-semibold">Status:</span>
+                    <Link
+                      href="/outreach"
+                      className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white text-xs font-bold flex items-center space-x-1.5 shadow-sm shadow-indigo-500/20 transition-all"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Draft Outreach (Phase 10)</span>
+                    </Link>
+
+                    <span className="text-[11px] text-slate-400 font-semibold ml-1">Status:</span>
                     <select
                       value={referral.status}
                       disabled={updatingStatusId === referral.id}

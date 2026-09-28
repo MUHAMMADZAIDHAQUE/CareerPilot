@@ -64,6 +64,9 @@ class Candidate(TimeStampedBase):
     referrals: Mapped[List["Referral"]] = relationship(
         "Referral", back_populates="candidate", cascade="all, delete-orphan", lazy="selectin"
     )
+    outreach_messages = relationship(
+        "Outreach", back_populates="candidate", cascade="all, delete-orphan", lazy="selectin"
+    )
 
 
 class Education(TimeStampedBase):
