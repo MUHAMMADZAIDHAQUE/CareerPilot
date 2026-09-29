@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, Award, FolderGit2, Sliders, Sparkles } from "lucide-react";
+import { User, Award, FolderGit2, Sliders } from "lucide-react";
 
 export default function ProfileNav() {
   const pathname = usePathname();
@@ -15,7 +15,7 @@ export default function ProfileNav() {
   ];
 
   return (
-    <div className="flex border-b border-slate-800 space-x-1 sm:space-x-4 overflow-x-auto pb-px">
+    <div className="flex border-b border-slate-200 space-x-1 sm:space-x-2 overflow-x-auto pb-px">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = pathname === tab.href;
@@ -23,13 +23,13 @@ export default function ProfileNav() {
           <Link
             key={tab.href}
             href={tab.href}
-            className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-all ${
+            className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition-all ${
               isActive
-                ? "border-brand-500 text-brand-400 bg-brand-500/5 font-semibold"
-                : "border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700"
+                ? "border-slate-900 text-slate-900 bg-slate-50 rounded-t-lg"
+                : "border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300"
             }`}
           >
-            <Icon className={`w-4 h-4 ${isActive ? "text-brand-400" : "text-slate-400"}`} />
+            <Icon className={`w-3.5 h-3.5 ${isActive ? "text-slate-900" : "text-slate-400"}`} />
             <span>{tab.label}</span>
           </Link>
         );

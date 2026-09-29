@@ -1,79 +1,178 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Activity, User, Award, Github, Layers, Briefcase, Send, Kanban, GraduationCap, TrendingUp } from "lucide-react";
+import {
+  Compass,
+  Briefcase,
+  FileText,
+  Users2,
+  Kanban,
+  GraduationCap,
+  TrendingUp,
+  User,
+  Settings,
+  Menu,
+  X,
+} from "lucide-react";
 
 export default function Header() {
   const pathname = usePathname();
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 12);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const navLinks = [
-    { href: "/", label: "Overview", icon: Layers },
+    { href: "/", label: "Dashboard", icon: Compass },
     { href: "/jobs", label: "Jobs", icon: Briefcase },
-    { href: "/jobs/analyze", label: "JD Analyzer", icon: Briefcase },
+    { href: "/resumes", label: "Resume", icon: FileText },
+    { href: "/referrals", label: "Referrals", icon: Users2 },
     { href: "/applications", label: "Applications", icon: Kanban },
-    { href: "/career/skill-gaps", label: "Skill Gaps", icon: TrendingUp },
-    { href: "/github", label: "GitHub", icon: Github },
     { href: "/interview", label: "Interview", icon: GraduationCap },
-    { href: "/outreach", label: "Outreach", icon: Send },
-    { href: "/profile", label: "Profile", icon: User },
-    { href: "/health", label: "Diagnostics", icon: Activity },
+    { href: "/insights", label: "Insights", icon: TrendingUp },
   ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-background/80 backdrop-blur-md">
+    <header
+      className={`sticky top-0 z-50 transition-all duration-200 ${
+        scrolled ? "glass-nav-scrolled" : "glass-nav"
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo & Brand */}
-          <Link href="/" className="flex items-center space-x-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-accent-cyan flex items-center justify-center shadow-lg shadow-brand-500/20 group-hover:scale-105 transition-transform duration-200">
-              <Compass className="w-5 h-5 text-white" />
+          <Link href="/" className="flex items-center space-x-2.5 group select-none">
+            <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-sm tracking-tight shadow-sm transition-transform group-hover:scale-105">
+              CP
             </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="font-bold text-lg tracking-tight text-white group-hover:text-brand-400 transition-colors">
-                  CareerPilot<span className="text-brand-400">.AI</span>
-                </span>
-                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20">
-                  Phase 4 Active
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 hidden sm:block">
-                AI Career Copilot & Resume Tailoring
-              </p>
+            <div className="flex items-baseline space-x-1">
+              <span className="font-bold text-base tracking-tight text-slate-900">
+                CareerPilot
+              </span>
+              <span className="text-[11px] font-mono text-slate-400 font-medium">AI</span>
             </div>
           </Link>
 
-          {/* Navigation */}
-          <nav className="flex items-center space-x-1 sm:space-x-2">
+          {/* Desktop Navigation Links */}
+          <nav className="hidden md:flex items-center space-x-1">
             {navLinks.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href) && item.href !== "/profile");
+              const isActive =
+                item.href === "/"
+                  ? pathname === "/"
+                  : pathname.startsWith(item.href);
+
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                    pathname === item.href
-                      ? "bg-slate-800 text-white shadow-sm border border-slate-700/60 font-semibold"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors select-none ${
+                    isActive
+                      ? "text-slate-900 bg-slate-100 font-semibold"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${pathname === item.href ? "text-brand-400" : ""}`} />
-                  <span>{item.label}</span>
+                  {item.label}
                 </Link>
               );
             })}
-
-            <div className="hidden lg:flex items-center pl-3 border-l border-slate-800 ml-2">
-              <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-medium">
-                <span className="w-2 h-2 rounded-full bg-brand-400 animate-pulse" />
-                <span>Profile Engine Online</span>
-              </div>
-            </div>
           </nav>
+
+          {/* Right Side Actions: Profile & Settings */}
+          <div className="hidden md:flex items-center space-x-2 border-l border-slate-200/80 pl-3">
+            <Link
+              href="/profile"
+              className={`p-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                pathname.startsWith("/profile")
+                  ? "text-slate-900 bg-slate-100 font-semibold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+              }`}
+              title="Career Profile"
+            >
+              <User className="w-4 h-4" />
+              <span className="text-xs">Profile</span>
+            </Link>
+
+            <Link
+              href="/settings"
+              className={`p-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                pathname.startsWith("/settings")
+                  ? "text-slate-900 bg-slate-100 font-semibold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+              }`}
+              title="Settings"
+            >
+              <Settings className="w-4 h-4" />
+            </Link>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <div className="flex md:hidden items-center">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              aria-label="Toggle Navigation Menu"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Mobile Drawer Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-b border-slate-200 bg-white/95 backdrop-blur-md px-4 pt-2 pb-4 space-y-1">
+          {navLinks.map((item) => {
+            const Icon = item.icon;
+            const isActive =
+              item.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(item.href);
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center space-x-2.5 px-3 py-2 rounded-lg text-sm font-medium ${
+                  isActive
+                    ? "bg-slate-100 text-slate-900 font-semibold"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <Icon className="w-4 h-4 text-slate-500" />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+
+          <div className="pt-2 mt-2 border-t border-slate-100 flex items-center space-x-2">
+            <Link
+              href="/profile"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex-1 flex items-center justify-center space-x-1.5 py-2 rounded-lg bg-slate-100 text-slate-800 text-xs font-medium"
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>Profile</span>
+            </Link>
+            <Link
+              href="/settings"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex-1 flex items-center justify-center space-x-1.5 py-2 rounded-lg border border-slate-200 text-slate-700 text-xs font-medium"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              <span>Settings</span>
+            </Link>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

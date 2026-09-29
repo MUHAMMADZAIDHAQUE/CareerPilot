@@ -134,7 +134,8 @@ from backend.app.api.v1.dashboard import router as dashboard_router
 # Route Registration
 # -----------------------------------------------------------------------------
 
-# Mount explicit endpoints requested: /api/health, /api/profile, /api/resume, /api/resumes, /api/jobs, /api/contacts, /api/outreach, /api/applications, /api/interview, /api/career, /api/github, /api/dashboard
+# Mount explicit endpoints requested: /health, /api/health, /api/profile, /api/resume, /api/resumes, /api/jobs, /api/contacts, /api/outreach, /api/applications, /api/interview, /api/career, /api/github, /api/dashboard
+app.include_router(health_router)
 app.include_router(health_router, prefix="/api")
 app.include_router(profile_router, prefix="/api")
 app.include_router(resume_router, prefix="/api")

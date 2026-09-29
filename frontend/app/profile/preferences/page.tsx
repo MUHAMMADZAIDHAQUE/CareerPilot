@@ -15,6 +15,8 @@ import {
   AlertCircle,
   Save,
 } from "lucide-react";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
 
 export default function PreferencesPage() {
   const [candidate, setCandidate] = useState<Candidate | null>(null);
@@ -105,19 +107,19 @@ export default function PreferencesPage() {
       <ProfileNav />
 
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center space-x-3">
-          <Sliders className="w-7 h-7 text-brand-400" />
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 flex items-center space-x-3 tracking-tight">
+          <Sliders className="w-6 h-6 text-slate-700" />
           <span>Job Search & Career Preferences</span>
         </h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <p className="text-sm text-slate-500 mt-1">
           Configure target criteria for job discovery, matching filters, and referral targeting.
         </p>
       </div>
 
-      <form onSubmit={handleSave} className="glass-card rounded-2xl p-6 sm:p-8 space-y-8">
+      <form onSubmit={handleSave} className="bg-white rounded-2xl p-6 sm:p-8 space-y-8 border border-slate-200/80 shadow-sm">
         {/* Work Mode Selector */}
         <div className="space-y-3">
-          <label className="block text-sm font-semibold text-white">
+          <label className="block text-xs font-semibold text-slate-700">
             Target Work Mode
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -131,11 +133,11 @@ export default function PreferencesPage() {
                   onClick={() => setWorkMode(mode.value)}
                   className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all ${
                     isSelected
-                      ? "bg-brand-600/20 border-brand-500 text-white shadow-lg shadow-brand-500/10 font-semibold"
-                      : "bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700"
+                      ? "bg-slate-900 border-slate-900 text-white shadow-sm font-semibold"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                   }`}
                 >
-                  <Icon className={`w-5 h-5 mb-1.5 ${isSelected ? "text-brand-400" : ""}`} />
+                  <Icon className={`w-5 h-5 mb-1.5 ${isSelected ? "text-white" : "text-slate-500"}`} />
                   <span className="text-xs">{mode.label}</span>
                 </button>
               );
@@ -146,8 +148,8 @@ export default function PreferencesPage() {
         {/* Roles & Locations */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="block text-xs font-semibold text-slate-200 flex items-center space-x-1.5">
-              <Briefcase className="w-4 h-4 text-brand-400" />
+            <label className="block text-xs font-semibold text-slate-700 flex items-center space-x-1.5">
+              <Briefcase className="w-3.5 h-3.5 text-slate-500" />
               <span>Preferred Job Roles (comma-separated)</span>
             </label>
             <input
@@ -155,14 +157,14 @@ export default function PreferencesPage() {
               value={preferredRoles}
               onChange={(e) => setPreferredRoles(e.target.value)}
               placeholder="e.g., Staff AI Engineer, Senior Backend Engineer, Lead Architect"
-              className="w-full bg-slate-950 text-xs text-white border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-brand-500"
+              className="w-full bg-slate-50 text-xs text-slate-900 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900"
             />
             <p className="text-[11px] text-slate-500">Used to filter job titles and matching relevance.</p>
           </div>
 
           <div className="space-y-2">
-            <label className="block text-xs font-semibold text-slate-200 flex items-center space-x-1.5">
-              <MapPin className="w-4 h-4 text-accent-cyan" />
+            <label className="block text-xs font-semibold text-slate-700 flex items-center space-x-1.5">
+              <MapPin className="w-3.5 h-3.5 text-slate-500" />
               <span>Preferred Locations (comma-separated)</span>
             </label>
             <input
@@ -170,22 +172,22 @@ export default function PreferencesPage() {
               value={preferredLocations}
               onChange={(e) => setPreferredLocations(e.target.value)}
               placeholder="e.g., San Francisco, CA, Seattle, WA, Remote"
-              className="w-full bg-slate-950 text-xs text-white border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-accent-cyan"
+              className="w-full bg-slate-50 text-xs text-slate-900 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900"
             />
             <p className="text-[11px] text-slate-500">Locations you are open to relocating or commuting to.</p>
           </div>
         </div>
 
         {/* Employment Type & Compensation */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-800">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-100">
           <div className="space-y-2">
-            <label className="block text-xs font-semibold text-slate-200">
+            <label className="block text-xs font-semibold text-slate-700">
               Employment Type
             </label>
             <select
               value={employmentType}
               onChange={(e) => setEmploymentType(e.target.value)}
-              className="w-full bg-slate-950 text-xs text-white border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-brand-500"
+              className="w-full bg-slate-50 text-xs text-slate-900 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900"
             >
               {employmentTypes.map((type) => (
                 <option key={type} value={type}>
@@ -196,8 +198,8 @@ export default function PreferencesPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="block text-xs font-semibold text-slate-200 flex items-center space-x-1">
-              <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+            <label className="block text-xs font-semibold text-slate-700 flex items-center space-x-1">
+              <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
               <span>Target Salary Minimum</span>
             </label>
             <input
@@ -206,13 +208,13 @@ export default function PreferencesPage() {
               value={salaryMin}
               onChange={(e) => setSalaryMin(e.target.value === "" ? "" : Number(e.target.value))}
               placeholder="180000"
-              className="w-full bg-slate-950 text-xs text-white border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-500"
+              className="w-full bg-slate-50 text-xs text-slate-900 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="block text-xs font-semibold text-slate-200 flex items-center space-x-1">
-              <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+            <label className="block text-xs font-semibold text-slate-700 flex items-center space-x-1">
+              <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
               <span>Target Salary Maximum</span>
             </label>
             <input
@@ -221,35 +223,36 @@ export default function PreferencesPage() {
               value={salaryMax}
               onChange={(e) => setSalaryMax(e.target.value === "" ? "" : Number(e.target.value))}
               placeholder="250000"
-              className="w-full bg-slate-950 text-xs text-white border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-500"
+              className="w-full bg-slate-50 text-xs text-slate-900 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900"
             />
           </div>
         </div>
 
         {saveSuccess && (
-          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center space-x-2">
-            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+          <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center space-x-2">
+            <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-600" />
             <span>Career preferences updated successfully!</span>
           </div>
         )}
 
         {saveError && (
-          <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center space-x-2">
+          <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center space-x-2">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{saveError}</span>
           </div>
         )}
 
         {/* Footer Submit */}
-        <div className="flex justify-end pt-4 border-t border-slate-800">
-          <button
+        <div className="flex justify-end pt-4 border-t border-slate-100">
+          <Button
             type="submit"
             disabled={isSaving}
-            className="inline-flex items-center space-x-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-semibold text-xs shadow-lg shadow-brand-500/20 disabled:opacity-50 transition-all"
+            variant="primary"
+            size="md"
           >
-            <Save className="w-4 h-4" />
+            <Save className="w-4 h-4 mr-2" />
             <span>{isSaving ? "Saving Preferences..." : "Save Preferences"}</span>
-          </button>
+          </Button>
         </div>
       </form>
     </div>

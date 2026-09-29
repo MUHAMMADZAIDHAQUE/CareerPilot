@@ -18,16 +18,11 @@ import {
   Search,
   CheckCircle2,
   AlertCircle,
-  Clock,
   Send,
-  UserCheck,
   Edit2,
   Trash2,
   Copy,
   Check,
-  Info,
-  Layers,
-  Award,
 } from "lucide-react";
 import {
   fetchJobApi,
@@ -42,6 +37,11 @@ import {
   Contact,
   JobReferralsResult,
 } from "@/lib/api";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
+import Badge from "@/components/ui/Badge";
+import EmptyState from "@/components/ui/EmptyState";
+import LoadingState from "@/components/ui/LoadingState";
 
 export default function JobReferralsPage() {
   const params = useParams();
@@ -227,7 +227,6 @@ export default function JobReferralsPage() {
       if (res.data) {
         setIsModalOpen(false);
         setSuccessMsg(`Updated contact "${res.data.name}"`);
-        // Refresh referrals
         handleDiscover();
       } else {
         setError(res.error || "Failed to update contact");
@@ -238,7 +237,6 @@ export default function JobReferralsPage() {
       if (res.data) {
         setIsModalOpen(false);
         setSuccessMsg(`Added new contact "${res.data.name}"`);
-        // Re-run discovery to immediately score newly added contact
         handleDiscover();
       } else {
         setError(res.error || "Failed to create contact");
@@ -253,7 +251,6 @@ export default function JobReferralsPage() {
     const res = await deleteContactApi(contactId);
     if (res.data?.success) {
       setSuccessMsg(`Contact "${contactName}" deleted.`);
-      // Remove referral from view
       setReferralsData((prev) => {
         if (!prev) return null;
         return {
@@ -280,7 +277,6 @@ export default function JobReferralsPage() {
       const contact = ref.contact;
       if (!contact) return false;
 
-      // Filter by relationship
       if (
         filterRelationship !== "all" &&
         ref.relationship_type.toLowerCase() !== filterRelationship.toLowerCase()
@@ -288,7 +284,6 @@ export default function JobReferralsPage() {
         return false;
       }
 
-      // Search query
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const matchesName = contact.name.toLowerCase().includes(query);
@@ -307,76 +302,64 @@ export default function JobReferralsPage() {
     });
   }, [referralsData, filterRelationship, searchQuery]);
 
-  const getRelationshipBadgeColor = (type: string) => {
+  const getRelationshipBadgeVariant = (type: string): "success" | "neutral" | "brand" => {
     switch (type.toLowerCase()) {
       case "current employee":
-        return "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+        return "success";
       case "university alumni":
-        return "bg-sky-500/10 text-sky-400 border-sky-500/30";
-      case "former colleague":
-        return "bg-indigo-500/10 text-indigo-400 border-indigo-500/30";
-      case "user-provided connection":
-        return "bg-purple-500/10 text-purple-400 border-purple-500/30";
+        return "brand";
       default:
-        return "bg-slate-800 text-slate-300 border-slate-700";
+        return "neutral";
     }
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "contacted":
-        return { label: "Contacted", color: "bg-blue-500/15 text-blue-400 border-blue-500/30" };
+        return { label: "Contacted", variant: "brand" as const };
       case "drafted":
-        return { label: "Outreach Drafted", color: "bg-amber-500/15 text-amber-400 border-amber-500/30" };
+        return { label: "Outreach Drafted", variant: "neutral" as const };
       case "referred":
-        return { label: "Referral Submitted", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" };
+        return { label: "Referral Submitted", variant: "success" as const };
       case "declined":
-        return { label: "Declined", color: "bg-rose-500/15 text-rose-400 border-rose-500/30" };
+        return { label: "Declined", variant: "error" as const };
       default:
-        return { label: "Opportunity Discovered", color: "bg-slate-800 text-slate-300 border-slate-700" };
+        return { label: "Discovered", variant: "neutral" as const };
     }
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[55vh] space-y-4">
-        <div className="w-12 h-12 border-4 border-brand-500/20 border-t-brand-400 rounded-full animate-spin" />
-        <p className="text-sm font-medium text-slate-400">Discovering Referral Opportunities...</p>
-      </div>
-    );
+    return <LoadingState message="Discovering referral opportunities..." />;
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 animate-fadeIn">
+    <div className="space-y-8 animate-in fade-in duration-300">
       {/* Top Header & Navigation */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-800/80 pb-6">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-200 pb-6">
         <div className="space-y-2">
           <div className="flex items-center space-x-2">
             <Link
               href={`/jobs/${jobId}`}
-              className="inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+              className="inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to Job Evaluation</span>
             </Link>
-            <span className="text-slate-600">/</span>
-            <span className="text-xs font-medium text-brand-400">Referral Discovery</span>
+            <span className="text-slate-300">/</span>
+            <span className="text-xs font-semibold text-slate-900">Referrals</span>
           </div>
 
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-brand-500/20">
+            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-sm">
               <Users className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-white tracking-tight flex items-center space-x-2">
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center space-x-2">
                 <span>Referral Discovery</span>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20 font-medium">
-                  Phase 9
-                </span>
               </h1>
-              <p className="text-xs text-slate-400">
-                Target: <span className="font-semibold text-slate-200">{job?.role}</span> at{" "}
-                <span className="font-semibold text-white">{job?.company}</span>
+              <p className="text-xs text-slate-500">
+                Target: <span className="font-semibold text-slate-800">{job?.role}</span> at{" "}
+                <span className="font-semibold text-slate-900">{job?.company}</span>
               </p>
             </div>
           </div>
@@ -384,52 +367,49 @@ export default function JobReferralsPage() {
 
         {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={openAddModal}
-            className="px-4 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700 text-xs font-bold text-slate-200 hover:text-white flex items-center space-x-2 shadow-sm transition-all"
-          >
-            <Plus className="w-4 h-4 text-emerald-400" />
+          <Button type="button" onClick={openAddModal} variant="outline" size="sm">
+            <Plus className="w-4 h-4 mr-1.5" />
             <span>Add Connection</span>
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="button"
             onClick={handleDiscover}
             disabled={discovering}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-brand-500/25 flex items-center space-x-2 transition-all disabled:opacity-50"
+            variant="primary"
+            size="sm"
           >
-            <RefreshCw className={`w-4 h-4 ${discovering ? "animate-spin" : ""}`} />
-            <span>{discovering ? "Scoring Connections..." : "Refresh Discovery"}</span>
-          </button>
+            <RefreshCw className={`w-4 h-4 mr-1.5 ${discovering ? "animate-spin" : ""}`} />
+            <span>{discovering ? "Scoring..." : "Refresh Discovery"}</span>
+          </Button>
         </div>
       </div>
 
       {/* Safety Policy & Ethics Compliance Notice */}
-      <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 backdrop-blur-md flex items-start space-x-3 text-xs text-slate-300">
-        <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-        <div className="space-y-1">
-          <p className="font-bold text-white">
+      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start space-x-3 text-xs text-slate-700">
+        <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+        <div className="space-y-0.5">
+          <p className="font-bold text-slate-900">
             Ethical & Permitted Sourcing Compliance
           </p>
-          <p className="text-slate-400 leading-relaxed">
+          <p className="text-slate-500 leading-relaxed">
             CareerPilot identifies referral pathways strictly through user-provided connections, verified alumni networks, and authorized company directories. We do{" "}
-            <span className="text-slate-200 font-semibold">NOT</span> scrape LinkedIn without authorization, automate messaging, or send unsolicited bulk outreach.
+            <span className="text-slate-800 font-semibold">NOT</span> scrape LinkedIn without authorization, automate messaging, or send unsolicited bulk outreach.
           </p>
         </div>
       </div>
 
       {/* Alerts */}
       {error && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{error}</span>
           </div>
           <button
             type="button"
             onClick={() => setError(null)}
-            className="text-slate-400 hover:text-white text-xs"
+            className="text-slate-400 hover:text-slate-700 text-xs"
           >
             ✕
           </button>
@@ -437,26 +417,26 @@ export default function JobReferralsPage() {
       )}
 
       {successMsg && (
-        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 flex items-center space-x-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center space-x-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{successMsg}</span>
         </div>
       )}
 
       {/* Search and Relationship Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900/50 border border-slate-800/80">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search contacts, roles, schools..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-brand-500/50"
+            className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900"
           />
         </div>
 
-        <div className="flex items-center space-x-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+        <div className="flex items-center space-x-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
           {[
             { id: "all", label: "All Contacts" },
             { id: "current employee", label: "Company Insiders" },
@@ -467,10 +447,10 @@ export default function JobReferralsPage() {
             <button
               key={tab.id}
               onClick={() => setFilterRelationship(tab.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
                 filterRelationship === tab.id
-                  ? "bg-brand-600 text-white shadow-sm"
-                  : "bg-slate-800/60 text-slate-400 hover:text-white border border-slate-700/50"
+                  ? "bg-slate-900 text-white font-semibold shadow-sm"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
               }`}
             >
               {tab.label}
@@ -481,27 +461,18 @@ export default function JobReferralsPage() {
 
       {/* Discovered Referrals List */}
       {filteredReferrals.length === 0 ? (
-        <div className="p-12 rounded-3xl bg-slate-900/40 border border-slate-800 text-center max-w-xl mx-auto space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-brand-500/10 text-brand-400 flex items-center justify-center mx-auto">
-            <Users className="w-6 h-6" />
-          </div>
-          <h3 className="text-base font-bold text-white">No Matching Referral Contacts Found</h3>
-          <p className="text-xs text-slate-400 leading-relaxed">
-            {referralsData?.referrals.length === 0
+        <EmptyState
+          title="No Matching Referral Contacts Found"
+          description={
+            referralsData?.referrals.length === 0
               ? `You haven't added any contacts associated with ${job?.company || "this company"} or your alumni network yet. Add a colleague or insider contact to calculate referral relevance.`
-              : "No contacts match the selected search and filter criteria."}
-          </p>
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={openAddModal}
-              className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold inline-flex items-center space-x-2 shadow-md shadow-brand-500/20"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Your First Contact</span>
-            </button>
-          </div>
-        </div>
+              : "No contacts match the selected search and filter criteria."
+          }
+          action={{
+            label: "Add Your First Contact",
+            onClick: openAddModal,
+          }}
+        />
       ) : (
         <div className="grid grid-cols-1 gap-6">
           {filteredReferrals.map((referral) => {
@@ -512,48 +483,43 @@ export default function JobReferralsPage() {
             const statusInfo = getStatusBadge(referral.status);
 
             return (
-              <div
+              <Card
                 key={referral.id}
-                className="p-6 rounded-3xl bg-slate-900/70 border border-slate-800 hover:border-slate-700/80 transition-all space-y-5 shadow-xl shadow-black/20"
+                className="p-6 space-y-5"
+                hover
               >
                 {/* Header: Contact Info & Relevance Gauge */}
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div className="flex items-start space-x-4">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-black text-lg shrink-0">
+                    <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800 font-bold text-base shrink-0">
                       {contact.name.charAt(0)}
                     </div>
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-base font-bold text-white">{contact.name}</h3>
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${getRelationshipBadgeColor(
-                            referral.relationship_type
-                          )}`}
-                        >
+                        <h3 className="text-base font-bold text-slate-900">{contact.name}</h3>
+                        <Badge variant={getRelationshipBadgeVariant(referral.relationship_type)}>
                           {referral.relationship_type}
-                        </span>
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[11px] font-medium border ${statusInfo.color}`}
-                        >
+                        </Badge>
+                        <Badge variant={statusInfo.variant}>
                           {statusInfo.label}
-                        </span>
+                        </Badge>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
-                        <span className="flex items-center space-x-1 text-slate-300">
-                          <Briefcase className="w-3.5 h-3.5 text-slate-500" />
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                        <span className="flex items-center space-x-1 text-slate-700">
+                          <Briefcase className="w-3.5 h-3.5 text-slate-400" />
                           <span>{contact.role}</span>
                         </span>
                         <span>•</span>
-                        <span className="flex items-center space-x-1 text-slate-300">
-                          <Building2 className="w-3.5 h-3.5 text-slate-500" />
+                        <span className="flex items-center space-x-1 text-slate-700">
+                          <Building2 className="w-3.5 h-3.5 text-slate-400" />
                           <span>{contact.company}</span>
                         </span>
                         {contact.university && (
                           <>
                             <span>•</span>
-                            <span className="flex items-center space-x-1 text-sky-300">
-                              <GraduationCap className="w-3.5 h-3.5 text-sky-400" />
+                            <span className="flex items-center space-x-1 text-slate-700">
+                              <GraduationCap className="w-3.5 h-3.5 text-slate-400" />
                               <span>{contact.university}</span>
                             </span>
                           </>
@@ -565,21 +531,21 @@ export default function JobReferralsPage() {
                   {/* Score Gauge */}
                   <div className="flex items-center space-x-3 shrink-0 self-end sm:self-auto">
                     <div className="text-right">
-                      <div className="text-lg font-black font-mono text-emerald-400">
+                      <div className="text-lg font-black font-mono text-emerald-700">
                         {score}%
                       </div>
-                      <div className="text-[10px] uppercase font-bold text-slate-500">
+                      <div className="text-[10px] uppercase font-bold text-slate-400">
                         Relevance Score
                       </div>
                     </div>
-                    <div className="w-10 h-10 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center p-1">
+                    <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center p-1">
                       <div
                         className="w-full h-full rounded-full flex items-center justify-center font-bold text-xs"
                         style={{
-                          background: `conic-gradient(#10b981 ${score * 3.6}deg, #1e293b 0deg)`,
+                          background: `conic-gradient(#059669 ${score * 3.6}deg, #e2e8f0 0deg)`,
                         }}
                       >
-                        <div className="w-7 h-7 rounded-full bg-slate-900 flex items-center justify-center text-[10px] text-emerald-400 font-mono">
+                        <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-[10px] text-emerald-700 font-mono">
                           ★
                         </div>
                       </div>
@@ -588,15 +554,15 @@ export default function JobReferralsPage() {
                 </div>
 
                 {/* Relevance Reason Callout */}
-                <div className="p-3.5 rounded-2xl bg-brand-500/5 border border-brand-500/15 text-xs text-brand-200/90 leading-relaxed flex items-start space-x-2.5">
-                  <Sparkles className="w-4 h-4 text-brand-400 shrink-0 mt-0.5" />
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70 text-xs text-slate-700 leading-relaxed flex items-start space-x-2.5">
+                  <Sparkles className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
                   <p>{referral.relevance_reason}</p>
                 </div>
 
                 {/* Transparent Evidence & Factor Breakdown */}
                 <div className="space-y-2">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center space-x-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Verifiable Evidence Breakdown</span>
                   </div>
 
@@ -604,16 +570,16 @@ export default function JobReferralsPage() {
                     {referral.evidence.map((item, idx) => (
                       <div
                         key={idx}
-                        className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-xs space-y-1 flex items-start justify-between"
+                        className="p-3 rounded-xl bg-slate-50/70 border border-slate-200/70 text-xs space-y-1 flex items-start justify-between"
                       >
                         <div className="space-y-0.5 pr-2">
-                          <span className="font-semibold text-slate-300 capitalize text-[11px]">
+                          <span className="font-semibold text-slate-800 capitalize text-[11px]">
                             {item.factor.replace("_", " ")}
                           </span>
-                          <p className="text-slate-400 text-[11px]">{item.evidence}</p>
+                          <p className="text-slate-500 text-[11px]">{item.evidence}</p>
                         </div>
                         {item.score_contribution > 0 && (
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-mono text-[10px] font-bold shrink-0">
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 font-mono text-[10px] font-bold shrink-0">
                             +{item.score_contribution}
                           </span>
                         )}
@@ -625,13 +591,13 @@ export default function JobReferralsPage() {
                 {/* Contact Skills (if present) */}
                 {contact.skills && contact.skills.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    <span className="text-[11px] font-semibold text-slate-400 mr-1">
+                    <span className="text-[11px] font-semibold text-slate-500 mr-1">
                       Technical Stack:
                     </span>
                     {contact.skills.map((skill, sIdx) => (
                       <span
                         key={sIdx}
-                        className="px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-300 text-[11px] border border-slate-700/60 font-mono"
+                        className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] border border-slate-200/70 font-mono"
                       >
                         {skill}
                       </span>
@@ -640,25 +606,25 @@ export default function JobReferralsPage() {
                 )}
 
                 {/* Footer Controls: Contact Details, Outreach Status & Action Buttons */}
-                <div className="pt-3 border-t border-slate-800/80 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="pt-3 border-t border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   {/* Legitimate Contact Channels */}
                   <div className="flex flex-wrap items-center gap-2.5">
                     {contact.email ? (
                       <button
                         type="button"
                         onClick={() => handleCopyEmail(contact.email!)}
-                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition-colors"
+                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-800 transition-colors"
                       >
-                        <Mail className="w-3.5 h-3.5 text-brand-400" />
+                        <Mail className="w-3.5 h-3.5 text-slate-500" />
                         <span>{contact.email}</span>
                         {copiedEmail === contact.email ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-400 ml-1" />
+                          <Check className="w-3.5 h-3.5 text-emerald-600 ml-1" />
                         ) : (
                           <Copy className="w-3 h-3 text-slate-400 ml-1" />
                         )}
                       </button>
                     ) : (
-                      <span className="text-xs text-slate-500 italic">
+                      <span className="text-xs text-slate-400 italic">
                         No direct email registered
                       </span>
                     )}
@@ -668,9 +634,9 @@ export default function JobReferralsPage() {
                         href={contact.profile_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition-colors"
+                        className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-800 transition-colors"
                       >
-                        <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                        <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
                         <span>Profile Link</span>
                       </a>
                     )}
@@ -678,20 +644,19 @@ export default function JobReferralsPage() {
 
                   {/* Outreach Status Selector & CRUD actions */}
                   <div className="flex items-center space-x-2 self-end md:self-auto">
-                    <Link
-                      href="/outreach"
-                      className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white text-xs font-bold flex items-center space-x-1.5 shadow-sm shadow-indigo-500/20 transition-all"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                      <span>Draft Outreach (Phase 10)</span>
+                    <Link href="/outreach">
+                      <Button variant="primary" size="sm">
+                        <Send className="w-3.5 h-3.5 mr-1.5" />
+                        <span>Draft Outreach</span>
+                      </Button>
                     </Link>
 
-                    <span className="text-[11px] text-slate-400 font-semibold ml-1">Status:</span>
+                    <span className="text-[11px] text-slate-500 font-semibold ml-1">Status:</span>
                     <select
                       value={referral.status}
                       disabled={updatingStatusId === referral.id}
                       onChange={(e) => handleStatusChange(referral.id, e.target.value)}
-                      className="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs font-medium text-slate-200 focus:outline-none focus:border-brand-500 disabled:opacity-50"
+                      className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 disabled:opacity-50"
                     >
                       <option value="suggested">Suggested</option>
                       <option value="drafted">Outreach Drafted</option>
@@ -703,7 +668,7 @@ export default function JobReferralsPage() {
                     <button
                       type="button"
                       onClick={() => openEditModal(contact)}
-                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"
                       title="Edit Contact"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
@@ -712,14 +677,14 @@ export default function JobReferralsPage() {
                     <button
                       type="button"
                       onClick={() => handleDeleteContact(contact.id!, contact.name)}
-                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-900/40 text-slate-400 hover:text-rose-300 transition-colors"
+                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors"
                       title="Delete Contact"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
-              </div>
+              </Card>
             );
           })}
         </div>
@@ -727,19 +692,19 @@ export default function JobReferralsPage() {
 
       {/* Add / Edit Contact Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl space-y-6 animate-scaleUp">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 max-w-xl w-full shadow-2xl space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center space-x-2.5">
-                <Users className="w-5 h-5 text-brand-400" />
-                <h2 className="text-lg font-bold text-white">
+                <Users className="w-5 h-5 text-slate-700" />
+                <h2 className="text-base font-bold text-slate-900">
                   {editingContact ? "Edit Professional Contact" : "Add Connection"}
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white text-sm"
+                className="text-slate-400 hover:text-slate-700 text-sm"
               >
                 ✕
               </button>
@@ -748,7 +713,7 @@ export default function JobReferralsPage() {
             <form onSubmit={handleSaveContact} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Full Name *
                   </label>
                   <input
@@ -757,12 +722,12 @@ export default function JobReferralsPage() {
                     placeholder="e.g. Jordan Lee"
                     value={contactForm.name}
                     onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Company *
                   </label>
                   <input
@@ -771,12 +736,12 @@ export default function JobReferralsPage() {
                     placeholder="e.g. Google, Stripe"
                     value={contactForm.company}
                     onChange={(e) => setContactForm({ ...contactForm, company: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Role / Title *
                   </label>
                   <input
@@ -785,12 +750,12 @@ export default function JobReferralsPage() {
                     placeholder="e.g. Staff Software Engineer"
                     value={contactForm.role}
                     onChange={(e) => setContactForm({ ...contactForm, role: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Department
                   </label>
                   <input
@@ -798,12 +763,12 @@ export default function JobReferralsPage() {
                     placeholder="e.g. Engineering, Product"
                     value={contactForm.department}
                     onChange={(e) => setContactForm({ ...contactForm, department: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     University / Alma Mater
                   </label>
                   <input
@@ -811,18 +776,18 @@ export default function JobReferralsPage() {
                     placeholder="e.g. Stanford University"
                     value={contactForm.university}
                     onChange={(e) => setContactForm({ ...contactForm, university: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Source
                   </label>
                   <select
                     value={contactForm.source}
                     onChange={(e) => setContactForm({ ...contactForm, source: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   >
                     <option value="user_provided">User-Provided Connection</option>
                     <option value="university_alumni">University Alumni Network</option>
@@ -832,7 +797,7 @@ export default function JobReferralsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Email (if legitimately available)
                   </label>
                   <input
@@ -840,12 +805,12 @@ export default function JobReferralsPage() {
                     placeholder="name@company.com"
                     value={contactForm.email}
                     onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Profile URL (public / portfolio)
                   </label>
                   <input
@@ -853,13 +818,13 @@ export default function JobReferralsPage() {
                     placeholder="https://..."
                     value={contactForm.profile_url}
                     onChange={(e) => setContactForm({ ...contactForm, profile_url: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Skills / Domain Expertise (comma separated)
                 </label>
                 <input
@@ -867,12 +832,12 @@ export default function JobReferralsPage() {
                   placeholder="e.g. Kubernetes, Go, Distributed Systems, Python"
                   value={contactForm.skills}
                   onChange={(e) => setContactForm({ ...contactForm, skills: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Relationship / Context Notes
                 </label>
                 <textarea
@@ -880,25 +845,27 @@ export default function JobReferralsPage() {
                   placeholder="e.g. Worked together on payments infra at Stripe; Stanford CS '21 classmate."
                   value={contactForm.notes}
                   onChange={(e) => setContactForm({ ...contactForm, notes: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
               </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-800">
-                <button
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-100">
+                <Button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-xs font-semibold text-slate-300 hover:text-white"
+                  variant="ghost"
+                  size="sm"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
                   disabled={savingContact}
-                  className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-xs font-bold text-white shadow-md shadow-brand-500/20 disabled:opacity-50"
+                  variant="primary"
+                  size="sm"
                 >
                   {savingContact ? "Saving..." : editingContact ? "Update Contact" : "Add Contact"}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

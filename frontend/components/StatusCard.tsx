@@ -23,38 +23,38 @@ export default function StatusCard({
   const isLoading = status === "loading";
 
   return (
-    <div className="glass-card rounded-xl p-6 glass-card-hover flex flex-col justify-between">
+    <div className="rounded-xl border border-slate-200/90 bg-white p-5 shadow-card hover:border-slate-300 transition-all flex flex-col justify-between">
       <div>
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700/50 text-brand-400">
-              <Icon className="w-5 h-5" />
+            <div className="p-2 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 shrink-0">
+              <Icon className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-100 text-base">{title}</h3>
-              <p className="text-xs text-slate-400 mt-0.5">{description}</p>
+              <h3 className="font-semibold text-slate-900 text-sm tracking-tight">{title}</h3>
+              <p className="text-xs text-slate-500 mt-0.5">{description}</p>
             </div>
           </div>
 
           <div>
             {isLoading ? (
-              <span className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <span className="flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
                 <RefreshCw className="w-3 h-3 animate-spin" />
                 <span>Checking</span>
               </span>
             ) : isHealthy ? (
-              <span className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <CheckCircle2 className="w-3 h-3" />
+              <span className="flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                 <span>{badge || "Online"}</span>
               </span>
             ) : isDegraded ? (
-              <span className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                <AlertTriangle className="w-3 h-3" />
+              <span className="flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                <AlertTriangle className="w-3 h-3 text-amber-600" />
                 <span>Degraded</span>
               </span>
             ) : (
-              <span className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                <XCircle className="w-3 h-3" />
+              <span className="flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-800 border border-rose-200">
+                <XCircle className="w-3 h-3 text-rose-600" />
                 <span>Disconnected</span>
               </span>
             )}
@@ -62,7 +62,7 @@ export default function StatusCard({
         </div>
 
         {details && (
-          <div className="mt-4 pt-3 border-t border-slate-800 text-xs text-slate-300">
+          <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-600">
             {details}
           </div>
         )}

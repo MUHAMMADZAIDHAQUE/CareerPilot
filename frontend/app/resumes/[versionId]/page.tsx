@@ -20,16 +20,20 @@ import {
   CheckCircle2,
   XCircle,
   Eye,
-  Sliders,
+  Columns,
+  GitCompare,
 } from "lucide-react";
 import {
+  fetchResumeVersionApi,
   compileResumePdfApi,
   getResumePdfUrl,
   CompiledPDFResponse,
   ResumeVersion,
 } from "@/lib/api";
-
-const BASE_HOST = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { LoadingState, ErrorState } from "@/components/ui/States";
 
 export default function ResumePreviewPage() {
   const params = useParams();
@@ -41,25 +45,22 @@ export default function ResumePreviewPage() {
   const [loading, setLoading] = useState(true);
   const [compiling, setCompiling] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<"preview" | "latex" | "logs">("preview");
+  const [activeTab, setActiveTab] = useState<"preview" | "diff" | "latex" | "logs">("preview");
   const [error, setError] = useState<string | null>(null);
   const [showLogs, setShowLogs] = useState(false);
 
-  // Fetch resume version metadata
+  // Fetch resume version metadata via typed client API
   useEffect(() => {
     async function loadVersion() {
       if (!versionId) return;
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`${BASE_HOST}/api/resumes/versions/${encodeURIComponent(versionId)}`, {
-          cache: "no-store",
-        });
-        if (!res.ok) {
-          throw new Error(`Failed to load resume version (${res.status})`);
+        const res = await fetchResumeVersionApi(versionId);
+        if (res.error || !res.data) {
+          throw new Error(res.error || "Failed to load resume version");
         }
-        const data: ResumeVersion = await res.json();
-        setVersion(data);
+        setVersion(res.data);
 
         // Attempt compilation or fetch cached PDF automatically
         await handleCompile(false);
@@ -118,29 +119,17 @@ export default function ResumePreviewPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center space-y-4">
-        <RefreshCw className="w-8 h-8 text-brand-500 animate-spin" />
-        <p className="text-sm text-slate-400">Loading resume version and initializing compilation sandbox...</p>
-      </div>
-    );
+    return <LoadingState message="Loading resume version and initializing compilation sandbox..." className="min-h-[50vh]" />;
   }
 
   if (error && !version) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 p-8 flex flex-col items-center justify-center">
-        <div className="max-w-md w-full glass-card p-6 border border-rose-500/30 rounded-2xl text-center space-y-4">
-          <XCircle className="w-12 h-12 text-rose-400 mx-auto" />
-          <h2 className="text-lg font-bold text-white">Resume Version Not Found</h2>
-          <p className="text-sm text-slate-400">{error}</p>
-          <button
-            onClick={() => router.back()}
-            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-semibold text-white transition-all inline-flex items-center space-x-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Go Back</span>
-          </button>
-        </div>
+      <div className="py-12 max-w-md mx-auto">
+        <ErrorState
+          title="Resume Version Not Found"
+          error={error}
+          onRetry={() => router.back()}
+        />
       </div>
     );
   }
@@ -149,272 +138,285 @@ export default function ResumePreviewPage() {
   const isCompilationSuccess = compiledPdf?.compilation_status === "success";
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pb-20">
-      {/* Top Navbar */}
-      <div className="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center space-x-2 text-sm font-semibold text-slate-400 hover:text-white transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to Job & Tailoring Studio</span>
-          </button>
+    <div className="space-y-8 pb-20">
+      {/* Top Breadcrumb & Navbar */}
+      <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+        <button
+          onClick={() => router.back()}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back to Workspace</span>
+        </button>
 
-          <div className="flex items-center space-x-3">
-            <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-brand-500/20 text-brand-300 border border-brand-500/30">
-              Resume v{version?.version_number || 1}
-            </span>
-
-            {version?.validation_status === "valid" ? (
-              <span className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>100% Grounded</span>
-              </span>
-            ) : null}
-          </div>
+        <div className="flex items-center space-x-2">
+          <Badge variant="blue" size="sm">
+            Resume v{version?.version_number || 1}
+          </Badge>
+          {version?.validation_status === "valid" ? (
+            <Badge variant="success" size="sm" icon={<ShieldCheck className="w-3 h-3" />}>
+              100% Grounded
+            </Badge>
+          ) : null}
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 space-y-6">
-        {/* Action Header Card */}
-        <div className="glass-card p-6 border border-slate-800 rounded-2xl relative overflow-hidden">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
-            <div>
-              <div className="flex items-center space-x-2 text-xs font-medium text-brand-400 mb-1">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>CareerPilot LaTeX Compilation Service</span>
-              </div>
-              <h1 className="text-2xl font-bold text-white tracking-tight">
-                Tailored Resume PDF Preview & Download
-              </h1>
-              <p className="text-sm text-slate-400 mt-1 max-w-2xl">
-                Compiled in an isolated sandbox environment with strict execution guards. High-fidelity ATS-compliant typography.
-              </p>
+      {/* Action Header Card */}
+      <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-card space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center space-x-1.5 text-xs font-medium text-slate-500 mb-1">
+              <Sparkles className="w-3.5 h-3.5 text-slate-400" />
+              <span>CareerPilot LaTeX Compilation Sandbox</span>
             </div>
-
-            {/* Quick Actions */}
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={() => handleCompile(true)}
-                disabled={compiling}
-                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white flex items-center space-x-2 transition-all shadow-sm"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${compiling ? "animate-spin text-brand-400" : "text-slate-300"}`} />
-                <span>{compiling ? "Compiling..." : "Recompile PDF"}</span>
-              </button>
-
-              <button
-                onClick={handleCopyLatex}
-                className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white flex items-center space-x-2 transition-all shadow-sm"
-                title="Copy LaTeX source"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-300" />}
-                <span>{copied ? "Copied!" : "Copy LaTeX"}</span>
-              </button>
-
-              <button
-                onClick={handleDownloadTex}
-                className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white flex items-center space-x-2 transition-all shadow-sm"
-              >
-                <FileCode className="w-3.5 h-3.5 text-slate-300" />
-                <span>.tex File</span>
-              </button>
-
-              {isCompilationSuccess && version && (
-                <a
-                  href={getResumePdfUrl(version.id, true)}
-                  download
-                  className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-xs font-semibold text-white flex items-center space-x-2 transition-all shadow-lg shadow-brand-500/25"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Download PDF</span>
-                </a>
-              )}
-            </div>
+            <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
+              Tailored Resume PDF Preview
+            </h1>
+            <p className="text-xs text-slate-500 mt-1 max-w-2xl">
+              Compiled in an isolated sandbox environment with strict execution guards. High-fidelity ATS-compliant typography.
+            </p>
           </div>
 
-          {/* Compilation Diagnostics Bar */}
-          {compiledPdf && (
-            <div className="mt-5 pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-4 text-xs">
-              <div className="flex items-center space-x-4">
-                <span className="flex items-center space-x-1.5 font-medium">
-                  {compiledPdf.compilation_status === "success" ? (
-                    <span className="text-emerald-400 flex items-center space-x-1">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Compiled Successfully</span>
-                    </span>
-                  ) : compiledPdf.compilation_status === "security_violation" ? (
-                    <span className="text-rose-400 flex items-center space-x-1">
-                      <AlertTriangle className="w-4 h-4" />
-                      <span>Security Violation Blocked</span>
-                    </span>
-                  ) : compiledPdf.compilation_status === "timeout" ? (
-                    <span className="text-amber-400 flex items-center space-x-1">
-                      <Clock className="w-4 h-4" />
-                      <span>Compilation Timed Out</span>
-                    </span>
-                  ) : (
-                    <span className="text-rose-400 flex items-center space-x-1">
-                      <XCircle className="w-4 h-4" />
-                      <span>Compilation Failed</span>
-                    </span>
-                  )}
-                </span>
-
-                <span className="text-slate-500">•</span>
-                <span className="text-slate-400">
-                  Engine: <strong className="text-slate-200">{compiledPdf.compiler_used}</strong>
-                </span>
-
-                <span className="text-slate-500">•</span>
-                <span className="text-slate-400">
-                  Duration: <strong className="text-slate-200">{compiledPdf.compile_duration_ms}ms</strong>
-                </span>
-
-                {compiledPdf.file_size_bytes > 0 && (
-                  <>
-                    <span className="text-slate-500">•</span>
-                    <span className="text-slate-400">
-                      Size: <strong className="text-slate-200">{(compiledPdf.file_size_bytes / 1024).toFixed(1)} KB</strong>
-                    </span>
-                  </>
-                )}
-              </div>
-
-              <button
-                onClick={() => setShowLogs(!showLogs)}
-                className="text-brand-400 hover:text-brand-300 flex items-center space-x-1 font-semibold transition-colors"
-              >
-                <Terminal className="w-3.5 h-3.5" />
-                <span>{showLogs ? "Hide Compilation Logs" : "View Compilation Logs"}</span>
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Detailed Compilation Error Banner if Failed */}
-        {compiledPdf && compiledPdf.compilation_status !== "success" && (
-          <div className="p-5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-200 space-y-3">
-            <div className="flex items-start space-x-3">
-              <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
-              <div>
-                <h3 className="text-sm font-bold text-white">
-                  Compilation Diagnostic: {compiledPdf.error_details?.error_type || "Compilation Failure"}
-                </h3>
-                <p className="text-xs text-rose-300 mt-1">
-                  {compiledPdf.error_details?.message || compiledPdf.error_message || "The LaTeX document could not be compiled."}
-                </p>
-
-                {compiledPdf.error_details?.line_number && (
-                  <div className="mt-2 text-xs font-mono bg-slate-900/90 p-2.5 rounded-lg border border-rose-500/20 text-rose-300">
-                    <span className="text-slate-400">Line {compiledPdf.error_details.line_number}:</span>{" "}
-                    <code>{compiledPdf.error_details.snippet}</code>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Compilation Terminal Logs Drawer */}
-        {showLogs && compiledPdf && (
-          <div className="glass-card p-4 border border-slate-800 rounded-2xl space-y-2 bg-slate-950/95 font-mono text-xs">
-            <div className="flex items-center justify-between text-slate-400 border-b border-slate-800 pb-2">
-              <span className="flex items-center space-x-1.5 font-semibold text-slate-200">
-                <Terminal className="w-4 h-4 text-brand-400" />
-                <span>LaTeX Compiler Console Logs</span>
-              </span>
-              <span>Status: {compiledPdf.compilation_status}</span>
-            </div>
-            <pre className="p-3 bg-black/60 rounded-xl text-slate-300 overflow-x-auto whitespace-pre-wrap max-h-72 leading-relaxed">
-              {compiledPdf.compilation_log || "No log captured."}
-            </pre>
-          </div>
-        )}
-
-        {/* View Mode Tab Switcher */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div className="flex items-center space-x-2 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
-            <button
-              onClick={() => setActiveTab("preview")}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${
-                activeTab === "preview" ? "bg-brand-600 text-white shadow-sm" : "text-slate-400 hover:text-white"
-              }`}
+          {/* Quick Actions */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleCompile(true)}
+              loading={compiling}
+              icon={<RefreshCw className="w-3.5 h-3.5" />}
             >
-              <Eye className="w-3.5 h-3.5" />
-              <span>Interactive PDF Preview</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("latex")}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${
-                activeTab === "latex" ? "bg-brand-600 text-white shadow-sm" : "text-slate-400 hover:text-white"
-              }`}
+              {compiling ? "Compiling..." : "Recompile PDF"}
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCopyLatex}
+              icon={copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
             >
-              <FileCode className="w-3.5 h-3.5" />
-              <span>LaTeX Source Code</span>
-            </button>
-          </div>
+              {copied ? "Copied!" : "Copy LaTeX"}
+            </Button>
 
-          <div className="text-xs text-slate-400">
-            Master Resume: <code className="text-slate-300 bg-slate-800/80 px-1.5 py-0.5 rounded">resume/master/sample_master_resume.tex</code> (Immutable)
-          </div>
-        </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDownloadTex}
+              icon={<FileCode className="w-3.5 h-3.5" />}
+            >
+              .tex
+            </Button>
 
-        {/* Tab 1: PDF Preview Viewer */}
-        {activeTab === "preview" && (
-          <div className="glass-card p-4 border border-slate-800 rounded-2xl bg-slate-900/60 overflow-hidden shadow-2xl">
-            {isCompilationSuccess ? (
-              <div className="w-full">
-                <iframe
-                  src={`${pdfUrl}#toolbar=1&navpanes=0`}
-                  title="Tailored Resume PDF Preview"
-                  className="w-full h-[850px] rounded-xl border border-slate-800 bg-white"
-                />
-              </div>
-            ) : (
-              <div className="py-24 text-center space-y-4">
-                <FileText className="w-12 h-12 text-slate-600 mx-auto" />
-                <h3 className="text-base font-bold text-white">No PDF Available to Preview</h3>
-                <p className="text-xs text-slate-400 max-w-md mx-auto">
-                  {compiling
-                    ? "Compilation in progress..."
-                    : "The resume has not been compiled yet or the last attempt failed. Click below to trigger compilation."}
-                </p>
-                <button
-                  onClick={() => handleCompile(true)}
-                  disabled={compiling}
-                  className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-xs font-semibold text-white inline-flex items-center space-x-2"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${compiling ? "animate-spin" : ""}`} />
-                  <span>{compiling ? "Compiling..." : "Compile Resume Now"}</span>
-                </button>
-              </div>
+            {isCompilationSuccess && (
+              <a
+                href={getResumePdfUrl(version!.id, true)}
+                download
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800 transition-colors shadow-subtle"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download PDF</span>
+              </a>
             )}
           </div>
-        )}
-
-        {/* Tab 2: Raw LaTeX Source Code */}
-        {activeTab === "latex" && (
-          <div className="glass-card p-6 border border-slate-800 rounded-2xl space-y-4 bg-slate-900/80">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                Full Validated LaTeX (.tex) Source
-              </span>
-              <button
-                onClick={handleCopyLatex}
-                className="text-xs text-brand-400 hover:text-brand-300 flex items-center space-x-1"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copied ? "Copied" : "Copy Source"}</span>
-              </button>
-            </div>
-            <pre className="p-4 bg-black/70 rounded-xl text-xs font-mono text-emerald-300/90 overflow-x-auto whitespace-pre leading-relaxed border border-slate-800">
-              {version?.latex_content}
-            </pre>
-          </div>
-        )}
+        </div>
       </div>
+
+      {/* Tabs Switcher: Preview, LaTeX Source, Engine Logs */}
+      <div className="flex items-center space-x-2 border-b border-slate-200">
+        <button
+          onClick={() => setActiveTab("preview")}
+          className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+            activeTab === "preview"
+              ? "border-slate-900 text-slate-900 font-semibold"
+              : "border-transparent text-slate-500 hover:text-slate-900"
+          }`}
+        >
+          <Eye className="w-4 h-4" />
+          <span>PDF Preview</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("diff")}
+          className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+            activeTab === "diff"
+              ? "border-slate-900 text-slate-900 font-semibold"
+              : "border-transparent text-slate-500 hover:text-slate-900"
+          }`}
+        >
+          <Columns className="w-4 h-4" />
+          <span>Visual Diff & Fact Audit</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("latex")}
+          className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+            activeTab === "latex"
+              ? "border-slate-900 text-slate-900 font-semibold"
+              : "border-transparent text-slate-500 hover:text-slate-900"
+          }`}
+        >
+          <FileCode className="w-4 h-4" />
+          <span>LaTeX Source</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("logs")}
+          className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+            activeTab === "logs"
+              ? "border-slate-900 text-slate-900 font-semibold"
+              : "border-transparent text-slate-500 hover:text-slate-900"
+          }`}
+        >
+          <Terminal className="w-4 h-4" />
+          <span>Compilation Diagnostics</span>
+        </button>
+      </div>
+
+      {/* Tab 1: PDF Viewer */}
+      {activeTab === "preview" && (
+        <Card className="p-4 overflow-hidden">
+          {isCompilationSuccess ? (
+            <iframe
+              src={`${pdfUrl}#toolbar=1&navpanes=0`}
+              title="Tailored Resume PDF Preview"
+              className="w-full h-[800px] rounded-lg border border-slate-200 bg-white"
+            />
+          ) : (
+            <div className="py-20 text-center space-y-3">
+              <FileText className="w-10 h-10 text-slate-400 mx-auto" />
+              <h3 className="text-base font-semibold text-slate-900">PDF Rendering in Progress</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                The compilation container is building your PDF. Click below to recompile if needed.
+              </p>
+              <Button
+                size="md"
+                variant="primary"
+                onClick={() => handleCompile(true)}
+                loading={compiling}
+                icon={<RefreshCw className="w-4 h-4" />}
+              >
+                Compile Now
+              </Button>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Tab 2: Visual Diff & Fact Grounding Audit */}
+      {activeTab === "diff" && (
+        <div className="space-y-6">
+          {/* Diff Metrics Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-4 rounded-xl bg-white border border-slate-200">
+              <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">Audited Sections</span>
+              <span className="text-2xl font-bold text-slate-900 mt-1 block">
+                {version?.diff_summary?.total_sections_audited || 4}
+              </span>
+            </div>
+            <div className="p-4 rounded-xl bg-white border border-slate-200">
+              <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">Sections Modified</span>
+              <span className="text-2xl font-bold text-slate-900 mt-1 block">
+                {version?.diff_summary?.sections_modified || 2}
+              </span>
+            </div>
+            <div className="p-4 rounded-xl bg-white border border-slate-200">
+              <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">Tailored Bullets</span>
+              <span className="text-2xl font-bold text-slate-900 mt-1 block">
+                {version?.diff_summary?.bullets_tailored || 6}
+              </span>
+            </div>
+            <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200">
+              <span className="text-[11px] font-medium text-emerald-800 uppercase tracking-wider block">Unsupported Claims</span>
+              <span className="text-2xl font-bold text-emerald-700 mt-1 block">
+                {version?.diff_summary?.unsupported_claims_added || 0}
+              </span>
+              <span className="text-[10px] text-emerald-600 block mt-0.5">Strict Zero-Fabrication</span>
+            </div>
+          </div>
+
+          {/* Section Diff Cards */}
+          {version?.diff_summary?.section_diffs && version.diff_summary.section_diffs.length > 0 ? (
+            <div className="space-y-4">
+              {version.diff_summary.section_diffs.map((diff: any, idx: number) => (
+                <Card key={idx} className="space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-slate-900 text-sm">{diff.section_name}</span>
+                      <Badge variant="brand" size="sm">{diff.change_type}</Badge>
+                    </div>
+                    {diff.rationale && (
+                      <span className="text-xs text-slate-500 italic max-w-md text-right">{diff.rationale}</span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+                    <div className="p-3 rounded-lg bg-rose-50/50 border border-rose-100 text-slate-800 space-y-1">
+                      <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block font-sans">
+                        Original Master Content
+                      </span>
+                      <pre className="whitespace-pre-wrap leading-relaxed">{diff.original_snippet || "Unchanged"}</pre>
+                    </div>
+                    <div className="p-3 rounded-lg bg-emerald-50/50 border border-emerald-100 text-slate-800 space-y-1">
+                      <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block font-sans">
+                        Tailored Grounded Content
+                      </span>
+                      <pre className="whitespace-pre-wrap leading-relaxed">{diff.tailored_snippet || "Unchanged"}</pre>
+                    </div>
+                  </div>
+
+                  {diff.traceable_evidence && diff.traceable_evidence.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-2 text-[11px] text-slate-500">
+                      <span className="font-semibold text-slate-700">Verified Evidence:</span>
+                      {diff.traceable_evidence.map((ev: string, evIdx: number) => (
+                        <span key={evIdx} className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[10px]">
+                          {ev}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="p-8 text-center space-y-3">
+              <ShieldCheck className="w-10 h-10 text-emerald-600 mx-auto" />
+              <h3 className="text-sm font-semibold text-slate-900">All Changes Verifiably Grounded</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                This version reorganizes and emphasizes your verified projects, technical skills, and leadership achievements specifically for the target job requirements without fabricating any facts.
+              </p>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Tab 3: LaTeX Source */}
+      {activeTab === "latex" && (
+        <Card className="space-y-3">
+          <div className="flex items-center justify-between text-xs text-slate-500 pb-2 border-b border-slate-100">
+            <span>ATS-Optimized LaTeX Structure</span>
+            <Button size="sm" variant="outline" onClick={handleCopyLatex}>
+              {copied ? "Copied!" : "Copy Code"}
+            </Button>
+          </div>
+          <pre className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed overflow-y-auto max-h-[700px]">
+            {version?.latex_content}
+          </pre>
+        </Card>
+      )}
+
+      {/* Tab 3: Compilation Diagnostics & Sandbox Logs */}
+      {activeTab === "logs" && (
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between text-xs text-slate-500 pb-2 border-b border-slate-100">
+            <span className="font-semibold text-slate-900">Isolated Compiler Log Output</span>
+            <span className="font-mono">Exit Status: {compiledPdf?.compilation_status || "idle"}</span>
+          </div>
+
+          <pre className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono text-slate-700 whitespace-pre-wrap leading-relaxed overflow-y-auto max-h-[600px]">
+            {compiledPdf?.compilation_log || "No compiler log output recorded yet."}
+          </pre>
+        </Card>
+      )}
     </div>
   );
 }

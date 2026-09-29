@@ -53,6 +53,7 @@ next-env.d.ts
 
 # Local storage and data
 data/storage/
+data/chrome-user-dir/
 *.sqlite3
 *.db
 scratch/

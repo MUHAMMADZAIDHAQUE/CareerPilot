@@ -123,7 +123,7 @@ class InterviewService:
                 .order_by(ResumeVersion.created_at.desc())
             )
             rv_res = await session.execute(res_stmt)
-            rv = rv_res.scalar_one_or_none()
+            rv = rv_res.scalars().first()
             if rv:
                 tailored_resume_data = {
                     "id": rv.id,

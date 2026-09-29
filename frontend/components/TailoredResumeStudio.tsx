@@ -17,7 +17,6 @@ import {
   RefreshCw,
   Eye,
   Columns,
-  BookOpen,
   ChevronDown,
   ChevronUp,
   FileText,
@@ -34,6 +33,9 @@ import {
   getResumePdfUrl,
   CompiledPDFResponse,
 } from "@/lib/api";
+import { Button } from "./ui/Button";
+import { Badge } from "./ui/Badge";
+import { Card, CardHeader } from "./ui/Card";
 
 interface TailoredResumeStudioProps {
   tailorData: TailorResumeResponse;
@@ -56,7 +58,7 @@ export default function TailoredResumeStudio({
   const [customInstructions, setCustomInstructions] = useState("");
   const [showInstructionsModal, setShowInstructionsModal] = useState(false);
 
-  // Phase 7: Compilation State
+  // Compilation State
   const [compiledPdf, setCompiledPdf] = useState<CompiledPDFResponse | null>(null);
   const [compiling, setCompiling] = useState(false);
   const [compileError, setCompileError] = useState<string | null>(null);
@@ -78,14 +80,14 @@ export default function TailoredResumeStudio({
           setViewMode("pdf_preview");
         } else {
           setCompileError(
-            res.data.error_details?.message || res.data.error_message || "Compilation failed"
+            res.data.error_message || "LaTeX compilation failed. Inspect terminal logs for details."
           );
         }
       } else if (res.error) {
         setCompileError(res.error);
       }
     } catch (err: any) {
-      setCompileError(err?.message || "Failed to compile LaTeX to PDF");
+      setCompileError(err?.message || "Compilation failed");
     } finally {
       setCompiling(false);
     }
@@ -120,116 +122,109 @@ export default function TailoredResumeStudio({
   return (
     <div className="space-y-6">
       {/* Top Banner: Version, Validation Shield, and Action Buttons */}
-      <div className="glass-card p-6 border border-slate-700/60 rounded-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+      <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-card space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center space-x-3 mb-2">
-              <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-brand-500/20 text-brand-300 border border-brand-500/30">
+            <div className="flex items-center space-x-2.5 mb-2">
+              <Badge variant="blue" size="sm">
                 Tailored Resume v{version.version_number}
-              </span>
+              </Badge>
               {version.validation_status === "valid" ? (
-                <span className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>100% Grounded & Verified (0 Hallucinations)</span>
-                </span>
+                <Badge variant="success" size="sm" icon={<ShieldCheck className="w-3.5 h-3.5" />}>
+                  100% Grounded & Verified (0 Hallucinations)
+                </Badge>
               ) : (
-                <span className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Validation Warning ({version.validation_status})</span>
-                </span>
+                <Badge variant="warning" size="sm" icon={<AlertTriangle className="w-3.5 h-3.5" />}>
+                  Validation Notice ({version.validation_status})
+                </Badge>
               )}
             </div>
 
-            <h2 className="text-xl font-bold text-white flex items-center space-x-2">
-              <span>Tailored for {jobRole} at {companyName}</span>
+            <h2 className="text-xl font-semibold text-slate-900 tracking-tight">
+              Tailored for {jobRole} at {companyName}
             </h2>
-            <p className="text-sm text-slate-400 mt-1">
-              Deterministic evidence-grounded LaTeX resume targeting required competencies and stack alignment.
+            <p className="text-xs text-slate-500 mt-1 max-w-2xl">
+              Deterministic evidence-grounded LaTeX resume targeting required competencies and stack alignment. Master facts preserved.
             </p>
           </div>
 
           {/* Quick Actions */}
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Compile PDF Button */}
-            <button
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant={isPdfReady ? "secondary" : "primary"}
               onClick={() => handleCompilePdf(isPdfReady)}
-              disabled={compiling}
-              className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center space-x-2 transition-all shadow-md ${
-                isPdfReady
-                  ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20"
-                  : "bg-brand-600 hover:bg-brand-500 text-white shadow-brand-500/20"
-              }`}
-              title="Compile LaTeX into ATS-friendly vector PDF"
+              loading={compiling}
+              icon={<RefreshCw className="w-3.5 h-3.5" />}
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${compiling ? "animate-spin" : ""}`} />
-              <span>{compiling ? "Compiling..." : isPdfReady ? "Recompile PDF" : "Compile PDF"}</span>
-            </button>
+              {compiling ? "Compiling..." : isPdfReady ? "Recompile PDF" : "Compile PDF"}
+            </Button>
 
             {isPdfReady && (
               <a
                 href={getResumePdfUrl(version.id, true)}
                 download
-                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-emerald-300 flex items-center space-x-2 transition-all shadow-sm"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition-colors"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Download PDF</span>
               </a>
             )}
 
-            <button
+            <Button
+              size="sm"
+              variant="outline"
               onClick={handleCopyLatex}
-              className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white flex items-center space-x-2 transition-all shadow-sm"
-              title="Copy tailored LaTeX source to clipboard"
+              icon={copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-300" />}
-              <span>{copied ? "Copied LaTeX!" : "Copy LaTeX"}</span>
-            </button>
+              {copied ? "Copied LaTeX!" : "Copy LaTeX"}
+            </Button>
 
-            <button
+            <Button
+              size="sm"
+              variant="outline"
               onClick={handleDownloadTex}
-              className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center space-x-2 transition-all shadow-sm"
-              title="Download standalone .tex file"
+              icon={<Download className="w-3.5 h-3.5" />}
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>.tex</span>
-            </button>
+              .tex
+            </Button>
 
             <Link
               href={`/resumes/${version.id}`}
               target="_blank"
-              className="px-3 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-300 hover:text-white flex items-center space-x-1.5 transition-all"
-              title="Open full dedicated preview and download page"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors"
             >
-              <ExternalLink className="w-3.5 h-3.5 text-brand-400" />
+              <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
               <span>Full Page</span>
             </Link>
 
             {onRetailor && (
-              <button
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={() => setShowInstructionsModal(!showInstructionsModal)}
                 disabled={isLoading}
-                className="px-3.5 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700/80 text-xs font-semibold text-slate-300 hover:text-white flex items-center space-x-1.5 transition-all"
+                icon={<RefreshCw className="w-3.5 h-3.5" />}
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
-                <span>Re-tailor</span>
-              </button>
+                Re-tailor
+              </Button>
             )}
           </div>
         </div>
 
-        {/* Optional Re-tailor instructions modal */}
+        {/* Optional Re-tailor instructions */}
         {showInstructionsModal && (
-          <div className="mt-4 pt-4 border-t border-slate-800 flex flex-col sm:flex-row gap-3">
+          <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               value={customInstructions}
               onChange={(e) => setCustomInstructions(e.target.value)}
-              placeholder="e.g. Prioritize vector indexing and high-throughput microservices bullets..."
-              className="flex-1 bg-slate-900/90 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
+              placeholder="e.g. Emphasize distributed systems, high concurrency, and PostgreSQL bullets..."
+              className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-800"
             />
-            <button
+            <Button
+              size="sm"
+              variant="primary"
               onClick={async () => {
                 if (onRetailor) {
                   await onRetailor(customInstructions);
@@ -237,84 +232,77 @@ export default function TailoredResumeStudio({
                 }
               }}
               disabled={isLoading}
-              className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-xs font-semibold text-white whitespace-nowrap"
             >
-              Apply & Regenerate
-            </button>
+              Apply Instructions
+            </Button>
           </div>
         )}
 
         {/* Validator Summary Strip */}
-        <div className="mt-6 pt-5 border-t border-slate-800/80 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="flex items-start space-x-2.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+        <div className="pt-4 border-t border-slate-100 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <div className="flex items-start space-x-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
             <div>
-              <div className="text-xs font-semibold text-white">Zero Inventions</div>
-              <div className="text-[11px] text-slate-400">All claims traceable to candidate</div>
+              <div className="font-semibold text-slate-900">Zero Inventions</div>
+              <div className="text-[11px] text-slate-500">All claims traceable to profile</div>
             </div>
           </div>
-          <div className="flex items-start space-x-2.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+          <div className="flex items-start space-x-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
             <div>
-              <div className="text-xs font-semibold text-white">Metrics Audited</div>
-              <div className="text-[11px] text-slate-400">{validation_report?.metrics_audited?.length || 0} numbers/metrics verified</div>
+              <div className="font-semibold text-slate-900">Metrics Audited</div>
+              <div className="text-[11px] text-slate-500">{validation_report?.metrics_audited?.length || 0} metrics verified</div>
             </div>
           </div>
-          <div className="flex items-start space-x-2.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+          <div className="flex items-start space-x-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
             <div>
-              <div className="text-xs font-semibold text-white">Experience Preserved</div>
-              <div className="text-[11px] text-slate-400">Companies, titles & dates intact</div>
+              <div className="font-semibold text-slate-900">History Preserved</div>
+              <div className="text-[11px] text-slate-500">Titles, companies, dates intact</div>
             </div>
           </div>
-          <div className="flex items-start space-x-2.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+          <div className="flex items-start space-x-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
             <div>
-              <div className="text-xs font-semibold text-white">Skills Aligned</div>
-              <div className="text-[11px] text-slate-400">Surfaced JD stack to front</div>
+              <div className="font-semibold text-slate-900">Skills Aligned</div>
+              <div className="text-[11px] text-slate-500">Targeted keywords reordered</div>
             </div>
           </div>
         </div>
 
         {/* Validator Details Collapsible */}
-        <div className="mt-4">
+        <div className="pt-1">
           <button
             onClick={() => setShowValidatorDetails(!showValidatorDetails)}
-            className="text-xs font-medium text-brand-400 hover:text-brand-300 flex items-center space-x-1 transition-colors"
+            className="text-xs font-medium text-slate-600 hover:text-slate-900 flex items-center space-x-1 transition-colors"
           >
-            <span>{showValidatorDetails ? "Hide Audit Checklist" : "View Full Validator Audit Report"}</span>
+            <span>{showValidatorDetails ? "Hide Validator Audit Checklist" : "View Full Validator Audit Checklist"}</span>
             {showValidatorDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
 
           {showValidatorDetails && (
-            <div className="mt-3 p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3">
-              <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                Validator Agent Audit Checklist ({validation_report?.checks?.length || 0} checks)
+            <div className="mt-3 p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
+              <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                Validator Agent Audit Checks ({validation_report?.checks?.length || 0} evaluated)
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {validation_report?.checks?.map((check: ValidationCheckItem, idx: number) => (
                   <div
                     key={idx}
-                    className="p-3 rounded-lg bg-slate-800/60 border border-slate-700/50 flex items-start space-x-2.5"
+                    className="p-2.5 rounded-lg bg-white border border-slate-200 flex items-start space-x-2"
                   >
                     {check.passed ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
                     ) : (
-                      <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" />
                     )}
                     <div>
-                      <div className="text-xs font-semibold text-white">{check.check_name}</div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">{check.details}</div>
+                      <div className="text-xs font-semibold text-slate-900">{check.check_name}</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">{check.details}</div>
                     </div>
                   </div>
                 ))}
               </div>
-              {validation_report?.technologies_audited?.length > 0 && (
-                <div className="pt-2 text-[11px] text-slate-400">
-                  <span className="font-semibold text-slate-300">Audited Technologies:</span>{" "}
-                  {validation_report.technologies_audited.join(", ")}
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -322,39 +310,36 @@ export default function TailoredResumeStudio({
 
       {/* View Mode Switcher */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center space-x-2 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
+        <div className="inline-flex p-1 rounded-xl bg-slate-100 border border-slate-200 text-xs">
           <button
             onClick={() => setViewMode("sections")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${
+            className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
               viewMode === "sections"
-                ? "bg-brand-600 text-white shadow-sm"
-                : "text-slate-400 hover:text-white"
+                ? "bg-white text-slate-900 shadow-subtle font-semibold"
+                : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Section Changes ({diff_summary?.sections_modified || 0})</span>
+            Section Changes ({diff_summary?.sections_modified || 0})
           </button>
           <button
             onClick={() => setViewMode("split")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${
+            className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
               viewMode === "split"
-                ? "bg-brand-600 text-white shadow-sm"
-                : "text-slate-400 hover:text-white"
+                ? "bg-white text-slate-900 shadow-subtle font-semibold"
+                : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <Columns className="w-3.5 h-3.5" />
-            <span>Side-by-Side LaTeX Diff</span>
+            Side-by-Side Diff
           </button>
           <button
             onClick={() => setViewMode("tailored_raw")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${
+            className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
               viewMode === "tailored_raw"
-                ? "bg-brand-600 text-white shadow-sm"
-                : "text-slate-400 hover:text-white"
+                ? "bg-white text-slate-900 shadow-subtle font-semibold"
+                : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <FileCode className="w-3.5 h-3.5" />
-            <span>Full LaTeX Source</span>
+            LaTeX Source
           </button>
           <button
             onClick={() => {
@@ -363,12 +348,12 @@ export default function TailoredResumeStudio({
                 handleCompilePdf(false);
               }
             }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${
+            className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1 ${
               viewMode === "pdf_preview"
-                ? "bg-emerald-600 text-white shadow-sm"
+                ? "bg-white text-slate-900 shadow-subtle font-semibold"
                 : isPdfReady
-                ? "text-emerald-400 hover:text-emerald-300"
-                : "text-slate-400 hover:text-white"
+                ? "text-emerald-700 hover:text-emerald-800"
+                : "text-slate-600 hover:text-slate-900"
             }`}
           >
             <Eye className="w-3.5 h-3.5" />
@@ -376,8 +361,8 @@ export default function TailoredResumeStudio({
           </button>
         </div>
 
-        <div className="text-xs text-slate-400 hidden sm:block">
-          Master source: <code className="text-slate-300 bg-slate-800/80 px-1.5 py-0.5 rounded">resume/master/sample_master_resume.tex</code> (Immutable)
+        <div className="text-xs text-slate-400 font-mono hidden sm:block">
+          Master template: sample_master_resume.tex (Immutable)
         </div>
       </div>
 
@@ -385,55 +370,45 @@ export default function TailoredResumeStudio({
       {viewMode === "sections" && (
         <div className="space-y-4">
           {diff_summary?.section_diffs?.length === 0 ? (
-            <div className="glass-card p-8 text-center text-slate-400 border border-slate-800 rounded-2xl">
-              No sections required modification; master resume already aligned with JD.
+            <div className="p-8 rounded-xl border border-slate-200 bg-white text-center text-xs text-slate-500">
+              No sections required modification; master resume is already optimally aligned with JD.
             </div>
           ) : (
             diff_summary?.section_diffs?.map((diff: SectionDiff, idx: number) => (
               <div
                 key={idx}
-                className="glass-card p-6 border border-slate-700/60 rounded-2xl space-y-4 transition-all hover:border-slate-600"
+                className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-card space-y-3"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
-                  <div className="flex items-center space-x-2.5">
-                    <span className="text-sm font-bold text-white">{diff.section_name}</span>
-                    <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        diff.change_type === "reordered"
-                          ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
-                          : diff.change_type === "tailored_bullets"
-                          ? "bg-brand-500/20 text-brand-300 border border-brand-500/30"
-                          : diff.change_type === "refined"
-                          ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
-                          : "bg-slate-700/50 text-slate-300"
-                      }`}
-                    >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-semibold text-slate-900">{diff.section_name}</span>
+                    <Badge variant="neutral" size="sm">
                       {diff.change_type}
-                    </span>
+                    </Badge>
                   </div>
-                  <div className="text-xs text-slate-400">
-                    <strong className="text-slate-300">{diff.rationale}</strong>
+                  <div className="text-xs text-slate-500">
+                    <strong>{diff.rationale}</strong>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* Before */}
-                  <div className="p-3.5 rounded-xl bg-slate-900/80 border border-rose-500/20 space-y-2">
-                    <div className="text-[11px] font-bold text-rose-400 uppercase tracking-wider flex items-center space-x-1.5">
-                      <span>Original Master Bullet / Content</span>
+                  <div className="p-3.5 rounded-xl bg-rose-50/40 border border-rose-200 space-y-2">
+                    <div className="text-[11px] font-semibold text-rose-800 uppercase tracking-wider">
+                      Original Master Bullet / Content
                     </div>
-                    <div className="text-xs text-slate-300 whitespace-pre-wrap font-mono bg-black/40 p-2.5 rounded-lg border border-slate-800">
+                    <div className="text-xs text-rose-950 whitespace-pre-wrap font-mono bg-white p-2.5 rounded-lg border border-rose-200/60">
                       {diff.original_snippet || "N/A"}
                     </div>
                   </div>
 
                   {/* After */}
-                  <div className="p-3.5 rounded-xl bg-slate-900/80 border border-emerald-500/20 space-y-2">
-                    <div className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center space-x-1.5">
-                      <Sparkles className="w-3 h-3 text-emerald-400" />
+                  <div className="p-3.5 rounded-xl bg-emerald-50/40 border border-emerald-200 space-y-2">
+                    <div className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider flex items-center space-x-1.5">
+                      <Sparkles className="w-3 h-3 text-emerald-600" />
                       <span>Job-Tailored Alignment</span>
                     </div>
-                    <div className="text-xs text-slate-200 whitespace-pre-wrap font-mono bg-black/40 p-2.5 rounded-lg border border-slate-800">
+                    <div className="text-xs text-emerald-950 whitespace-pre-wrap font-mono bg-white p-2.5 rounded-lg border border-emerald-200/60">
                       {diff.tailored_snippet || "N/A"}
                     </div>
                   </div>
@@ -441,12 +416,12 @@ export default function TailoredResumeStudio({
 
                 {/* Evidence attribution */}
                 {diff.traceable_evidence && diff.traceable_evidence.length > 0 && (
-                  <div className="pt-2 flex flex-wrap items-center gap-1.5">
-                    <span className="text-[11px] text-slate-400 font-semibold">Grounded in candidate evidence:</span>
+                  <div className="pt-2 flex flex-wrap items-center gap-1.5 text-xs">
+                    <span className="text-slate-500 font-medium">Grounded in candidate proof:</span>
                     {diff.traceable_evidence.map((ev: string, evIdx: number) => (
                       <span
                         key={evIdx}
-                        className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700"
+                        className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200"
                       >
                         {ev}
                       </span>
@@ -461,38 +436,38 @@ export default function TailoredResumeStudio({
 
       {/* Mode 2: Side-by-Side LaTeX Diff */}
       {viewMode === "split" && (
-        <div className="glass-card border border-slate-700/60 rounded-2xl overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-800">
+        <div className="rounded-2xl border border-slate-200/90 bg-white overflow-hidden shadow-card">
+          <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
             {/* Master LaTeX */}
-            <div className="p-4 bg-slate-950/50">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center space-x-1.5">
-                  <FileCode className="w-3.5 h-3.5 text-slate-400" />
+            <div className="p-4 bg-slate-50/50">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+                <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center space-x-1.5">
+                  <FileCode className="w-3.5 h-3.5 text-slate-500" />
                   <span>Master LaTeX (Immutable)</span>
                 </span>
-                <span className="text-[11px] text-slate-500 font-mono">sample_master_resume.tex</span>
+                <span className="text-[11px] text-slate-400 font-mono">sample_master_resume.tex</span>
               </div>
-              <pre className="text-xs font-mono text-slate-400 whitespace-pre-wrap leading-relaxed overflow-y-auto max-h-[600px] p-2">
+              <pre className="text-xs font-mono text-slate-700 whitespace-pre-wrap leading-relaxed overflow-y-auto max-h-[550px] p-2 bg-white rounded-lg border border-slate-200">
                 {master_resume_content}
               </pre>
             </div>
 
             {/* Tailored LaTeX */}
-            <div className="p-4 bg-slate-950/80">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
-                <span className="text-xs font-bold text-brand-300 uppercase tracking-wider flex items-center space-x-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-brand-400" />
+            <div className="p-4 bg-white">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+                <span className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Job-Tailored LaTeX (v{version.version_number})</span>
                 </span>
                 <button
                   onClick={handleCopyLatex}
-                  className="text-[11px] text-slate-400 hover:text-white flex items-center space-x-1"
+                  className="text-[11px] text-slate-500 hover:text-slate-900 flex items-center space-x-1"
                 >
-                  {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                   <span>{copied ? "Copied" : "Copy"}</span>
                 </button>
               </div>
-              <pre className="text-xs font-mono text-emerald-300/90 whitespace-pre-wrap leading-relaxed overflow-y-auto max-h-[600px] p-2">
+              <pre className="text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed overflow-y-auto max-h-[550px] p-2 bg-slate-50 rounded-lg border border-slate-200">
                 {version.latex_content}
               </pre>
             </div>
@@ -502,32 +477,24 @@ export default function TailoredResumeStudio({
 
       {/* Mode 3: Raw Tailored LaTeX */}
       {viewMode === "tailored_raw" && (
-        <div className="glass-card p-6 border border-slate-700/60 rounded-2xl space-y-4">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-6 space-y-4 shadow-card">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold text-white">Full Tailored LaTeX Document</h3>
-              <p className="text-xs text-slate-400">Ready to compile with pdflatex or export</p>
+              <h3 className="text-sm font-semibold text-slate-900">Tailored LaTeX Source</h3>
+              <p className="text-xs text-slate-500">Ready to compile with pdflatex or export</p>
             </div>
             <div className="flex items-center space-x-2">
-              <button
-                onClick={handleCopyLatex}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white flex items-center space-x-1.5"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copied ? "Copied!" : "Copy Source"}</span>
-              </button>
-              <button
-                onClick={handleDownloadTex}
-                className="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-xs font-semibold text-white flex items-center space-x-1.5"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download .tex</span>
-              </button>
+              <Button size="sm" variant="outline" onClick={handleCopyLatex}>
+                {copied ? "Copied!" : "Copy Source"}
+              </Button>
+              <Button size="sm" variant="primary" onClick={handleDownloadTex}>
+                Download .tex
+              </Button>
             </div>
           </div>
 
-          <div className="rounded-xl bg-slate-950 p-4 border border-slate-800">
-            <pre className="text-xs font-mono text-slate-200 whitespace-pre-wrap leading-relaxed overflow-y-auto max-h-[600px]">
+          <div className="rounded-xl bg-slate-50 p-4 border border-slate-200">
+            <pre className="text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed overflow-y-auto max-h-[550px]">
               {version.latex_content}
             </pre>
           </div>
@@ -539,45 +506,35 @@ export default function TailoredResumeStudio({
         <div className="space-y-4">
           {/* Compilation Diagnostics Header */}
           {compiledPdf && (
-            <div className="glass-card p-4 border border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-4 text-xs">
+            <div className="rounded-2xl border border-slate-200/90 bg-white p-4 flex flex-wrap items-center justify-between gap-4 text-xs shadow-card">
               <div className="flex items-center space-x-3">
                 {compiledPdf.compilation_status === "success" ? (
-                  <span className="text-emerald-400 flex items-center space-x-1.5 font-bold">
-                    <CheckCircle2 className="w-4 h-4" />
+                  <span className="text-emerald-700 flex items-center space-x-1.5 font-semibold">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     <span>Compiled Successfully</span>
                   </span>
-                ) : compiledPdf.compilation_status === "security_violation" ? (
-                  <span className="text-rose-400 flex items-center space-x-1.5 font-bold">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span>Security Violation Blocked</span>
-                  </span>
-                ) : compiledPdf.compilation_status === "timeout" ? (
-                  <span className="text-amber-400 flex items-center space-x-1.5 font-bold">
-                    <Clock className="w-4 h-4" />
-                    <span>Compilation Timed Out</span>
-                  </span>
                 ) : (
-                  <span className="text-rose-400 flex items-center space-x-1.5 font-bold">
-                    <XCircle className="w-4 h-4" />
-                    <span>Compilation Failed</span>
+                  <span className="text-rose-700 flex items-center space-x-1.5 font-semibold">
+                    <XCircle className="w-4 h-4 text-rose-600" />
+                    <span>Compilation Status: {compiledPdf.compilation_status}</span>
                   </span>
                 )}
 
-                <span className="text-slate-600">•</span>
-                <span className="text-slate-400">
-                  Engine: <strong className="text-slate-200">{compiledPdf.compiler_used}</strong>
+                <span className="text-slate-300">•</span>
+                <span className="text-slate-500">
+                  Engine: <strong className="text-slate-800">{compiledPdf.compiler_used}</strong>
                 </span>
 
-                <span className="text-slate-600">•</span>
-                <span className="text-slate-400">
-                  Duration: <strong className="text-slate-200">{compiledPdf.compile_duration_ms}ms</strong>
+                <span className="text-slate-300">•</span>
+                <span className="text-slate-500">
+                  Duration: <strong className="text-slate-800">{compiledPdf.compile_duration_ms}ms</strong>
                 </span>
 
                 {compiledPdf.file_size_bytes > 0 && (
                   <>
-                    <span className="text-slate-600">•</span>
-                    <span className="text-slate-400">
-                      Size: <strong className="text-slate-200">{(compiledPdf.file_size_bytes / 1024).toFixed(1)} KB</strong>
+                    <span className="text-slate-300">•</span>
+                    <span className="text-slate-500">
+                      Size: <strong className="text-slate-800">{(compiledPdf.file_size_bytes / 1024).toFixed(1)} KB</strong>
                     </span>
                   </>
                 )}
@@ -586,7 +543,7 @@ export default function TailoredResumeStudio({
               <div className="flex items-center space-x-3">
                 <button
                   onClick={() => setShowLogs(!showLogs)}
-                  className="text-brand-400 hover:text-brand-300 flex items-center space-x-1 font-semibold transition-colors"
+                  className="text-slate-600 hover:text-slate-900 flex items-center space-x-1 font-medium transition-colors"
                 >
                   <Terminal className="w-3.5 h-3.5" />
                   <span>{showLogs ? "Hide Console Logs" : "View Console Logs"}</span>
@@ -596,7 +553,7 @@ export default function TailoredResumeStudio({
                   <a
                     href={getResumePdfUrl(version.id, true)}
                     download
-                    className="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-xs font-semibold text-white flex items-center space-x-1.5 transition-all shadow-sm"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800 transition-colors shadow-subtle"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Download PDF</span>
@@ -608,56 +565,52 @@ export default function TailoredResumeStudio({
 
           {/* Compilation Error Banner if Failed */}
           {compileError && (
-            <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-200 text-xs space-y-2">
-              <div className="flex items-center space-x-2 font-bold text-white">
-                <AlertTriangle className="w-4 h-4 text-rose-400" />
+            <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs space-y-2">
+              <div className="flex items-center space-x-2 font-semibold text-rose-900">
+                <AlertTriangle className="w-4 h-4 text-rose-600" />
                 <span>Compilation Diagnostics</span>
               </div>
               <p>{compileError}</p>
-              {compiledPdf?.error_details?.line_number && (
-                <div className="font-mono bg-slate-900 p-2 rounded text-slate-300 border border-rose-500/20">
-                  Line {compiledPdf.error_details.line_number}: {compiledPdf.error_details.snippet}
-                </div>
-              )}
             </div>
           )}
 
           {/* Console Logs Panel */}
           {showLogs && compiledPdf && (
-            <div className="glass-card p-4 border border-slate-800 rounded-xl bg-slate-950 font-mono text-xs space-y-2">
-              <div className="flex items-center justify-between text-slate-400 border-b border-slate-800 pb-2">
-                <span className="font-semibold text-slate-300">Compilation Engine Terminal Logs</span>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 font-mono text-xs space-y-2">
+              <div className="flex items-center justify-between text-slate-500 border-b border-slate-200 pb-2">
+                <span className="font-semibold text-slate-800">Compilation Engine Terminal Logs</span>
                 <span>Status: {compiledPdf.compilation_status}</span>
               </div>
-              <pre className="p-3 bg-black/60 rounded text-slate-300 whitespace-pre-wrap max-h-60 overflow-y-auto">
+              <pre className="p-3 bg-white rounded-lg border border-slate-200 text-slate-800 whitespace-pre-wrap max-h-60 overflow-y-auto">
                 {compiledPdf.compilation_log || "No console output recorded."}
               </pre>
             </div>
           )}
 
           {/* Embedded PDF Viewer */}
-          <div className="glass-card p-4 border border-slate-700/60 rounded-2xl bg-slate-900/60 overflow-hidden shadow-2xl">
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-4 overflow-hidden shadow-card">
             {isPdfReady ? (
               <iframe
                 src={`${pdfUrl}#toolbar=1&navpanes=0`}
                 title="Tailored Resume PDF Preview"
-                className="w-full h-[750px] rounded-xl border border-slate-800 bg-white"
+                className="w-full h-[750px] rounded-xl border border-slate-200 bg-white"
               />
             ) : (
-              <div className="py-20 text-center space-y-4">
-                <FileText className="w-12 h-12 text-slate-600 mx-auto" />
-                <h3 className="text-base font-bold text-white">PDF Not Yet Compiled</h3>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                  Click below to compile this validated tailored LaTeX resume into an ATS-compliant PDF artifact in an isolated sandbox.
+              <div className="py-20 text-center space-y-3">
+                <FileText className="w-10 h-10 text-slate-400 mx-auto" />
+                <h3 className="text-base font-semibold text-slate-900">PDF Not Yet Compiled</h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  Compile this validated tailored LaTeX resume into an ATS-compliant PDF in an isolated sandbox.
                 </p>
-                <button
+                <Button
+                  size="md"
+                  variant="primary"
                   onClick={() => handleCompilePdf(true)}
-                  disabled={compiling}
-                  className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-xs font-semibold text-white inline-flex items-center space-x-2 transition-all shadow-md shadow-brand-500/25"
+                  loading={compiling}
+                  icon={<RefreshCw className="w-4 h-4" />}
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${compiling ? "animate-spin" : ""}`} />
-                  <span>{compiling ? "Compiling..." : "Compile Resume Now"}</span>
-                </button>
+                  Compile Resume Now
+                </Button>
               </div>
             )}
           </div>

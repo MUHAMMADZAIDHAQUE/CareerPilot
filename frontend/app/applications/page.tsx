@@ -4,13 +4,11 @@ import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Kanban,
+  List,
   Building2,
-  Briefcase,
   Calendar,
   Clock,
   Sparkles,
-  FileCode,
-  Users,
   Plus,
   RefreshCw,
   Search,
@@ -20,14 +18,13 @@ import {
   Edit2,
   Trash2,
   ArrowRight,
-  ArrowLeft,
-  ChevronRight,
   ExternalLink,
-  Tag,
-  Flame,
-  Award,
-  Send,
-  MoreVertical,
+  ChevronRight,
+  Check,
+  X,
+  Users2,
+  FileCode,
+  GraduationCap,
 } from "lucide-react";
 import {
   fetchKanbanBoardApi,
@@ -39,36 +36,33 @@ import {
   Job,
   KanbanBoardResult,
 } from "@/lib/api";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { Input, Select } from "@/components/ui/Input";
+import { Modal } from "@/components/ui/Modal";
+import { Table, Column } from "@/components/ui/Table";
+import { EmptyState, LoadingState, ErrorState } from "@/components/ui/States";
 
-const KANBAN_STAGES = [
-  { id: "Saved", label: "Saved", status: "SAVED", color: "border-slate-700 bg-slate-900/60 text-slate-300" },
-  { id: "Ready", label: "Ready to Apply", status: "READY_TO_APPLY", color: "border-amber-500/30 bg-amber-500/5 text-amber-300" },
-  { id: "Applied", label: "Applied", status: "APPLIED", color: "border-sky-500/30 bg-sky-500/5 text-sky-300" },
-  { id: "Screening", label: "Screening", status: "SCREENING", color: "border-indigo-500/30 bg-indigo-500/5 text-indigo-300" },
-  { id: "Interview", label: "Interviewing", status: "INTERVIEW", color: "border-purple-500/30 bg-purple-500/5 text-purple-300" },
-  { id: "Offer", label: "Offer Received", status: "OFFER", color: "border-emerald-500/30 bg-emerald-500/5 text-emerald-300" },
-  { id: "Rejected", label: "Archived / Rejected", status: "REJECTED", color: "border-rose-500/30 bg-rose-500/5 text-rose-300" },
+const KANBAN_COLUMNS = [
+  { id: "SAVED", label: "Saved" },
+  { id: "READY_TO_APPLY", label: "Analyzing" },
+  { id: "APPLIED", label: "Applied" },
+  { id: "SCREENING", label: "Referral Requested" },
+  { id: "INTERVIEW", label: "Interview" },
+  { id: "OFFER", label: "Offer" },
+  { id: "REJECTED", label: "Rejected" },
+  { id: "WITHDRAWN", label: "Withdrawn" },
 ];
 
 export default function ApplicationsPage() {
-  const [board, setBoard] = useState<Record<string, Application[]>>({
-    Saved: [],
-    Ready: [],
-    Applied: [],
-    Screening: [],
-    Interview: [],
-    Offer: [],
-    Rejected: [],
-  });
+  const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
+  const [boardData, setBoardData] = useState<Record<string, Application[]>>({});
   const [totalApps, setTotalApps] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-
-  // Drag and Drop state
-  const [draggedAppId, setDraggedAppId] = useState<string | null>(null);
-  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
 
   // Edit / Details Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -92,678 +86,579 @@ export default function ApplicationsPage() {
   const [addNextAction, setAddNextAction] = useState("");
   const [creatingApp, setCreatingApp] = useState(false);
 
-  // Load Kanban Data
-  const loadKanban = async (query = searchQuery) => {
+  // Load Kanban & Applications
+  const loadData = async (query = searchQuery) => {
     setLoading(true);
     setError(null);
-    const res = await fetchKanbanBoardApi({ search: query.trim() || undefined });
-    setLoading(false);
+    try {
+      const res = await fetchKanbanBoardApi({ search: query.trim() || undefined });
+      if (res.data) {
+        // Group into our standard columns
+        const grouped: Record<string, Application[]> = {
+          SAVED: [],
+          READY_TO_APPLY: [],
+          APPLIED: [],
+          SCREENING: [],
+          INTERVIEW: [],
+          OFFER: [],
+          REJECTED: [],
+          WITHDRAWN: [],
+        };
 
-    if (res.data) {
-      setBoard(res.data.columns);
-      setTotalApps(res.data.total_applications);
-    } else {
-      setError(res.error || "Failed to load Kanban board");
+        // Populate from server columns
+        const serverBoard = res.data.columns || {};
+        Object.keys(serverBoard).forEach((colKey) => {
+          const list = serverBoard[colKey] || [];
+          list.forEach((app) => {
+            const st = app.status || "SAVED";
+            if (grouped[st]) {
+              grouped[st].push(app);
+            } else if (st === "TECHNICAL" || st === "FINAL_ROUND") {
+              grouped["INTERVIEW"].push(app);
+            } else {
+              grouped["SAVED"].push(app);
+            }
+          });
+        });
+
+        setBoardData(grouped);
+        setTotalApps(res.data.total_applications);
+      } else {
+        setError(res.error || "Failed to load applications");
+      }
+    } catch (err: any) {
+      setError(err?.message || "Failed to load applications");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    loadKanban();
+    loadData();
+    // Load available jobs for Add modal
+    fetchJobsApi({ limit: 80 }).then((res) => {
+      if (res.data) {
+        setJobs(res.data);
+        if (res.data.length > 0) setSelectedJobId(res.data[0].id);
+      }
+    });
   }, []);
 
-  // Stage transition via drag-and-drop or dropdown
-  const handleMoveStage = async (appId: string, targetStage: string) => {
-    // Find target status from column
-    const stageObj = KANBAN_STAGES.find((s) => s.id === targetStage);
-    const targetStatus = stageObj ? stageObj.status : targetStage;
-
-    // Optimistically update local UI
-    let foundApp: Application | null = null;
-    const newBoard = { ...board };
-
-    for (const col of Object.keys(newBoard)) {
-      const idx = newBoard[col].findIndex((a) => a.id === appId);
-      if (idx !== -1) {
-        foundApp = { ...newBoard[col][idx], status: targetStatus };
-        newBoard[col].splice(idx, 1);
-        break;
-      }
-    }
-
-    if (foundApp) {
-      newBoard[targetStage] = [foundApp, ...(newBoard[targetStage] || [])];
-      setBoard(newBoard);
-    }
-
-    // Call API
-    const res = await updateApplicationApi(appId, { status: targetStatus });
-    if (!res.data) {
-      setError(res.error || "Failed to move stage");
-      // Revert
-      loadKanban();
-    } else {
-      setSuccessMsg(`Moved to ${targetStage}`);
-      setTimeout(() => setSuccessMsg(null), 2500);
+  const handleStatusChange = async (appId: string, newStatus: string) => {
+    const res = await updateApplicationApi(appId, { status: newStatus as any });
+    if (res.data) {
+      loadData();
     }
   };
 
-  // Open Edit Modal
-  const openEdit = (app: Application) => {
+  const handleEditClick = (app: Application) => {
     setEditingApp(app);
     setEditForm({
-      status: app.status || "SAVED",
+      status: app.status,
       interview_stage: app.interview_stage || "",
       referral_status: app.referral_status || "none",
       notes: app.notes || "",
       next_action: app.next_action || "",
-      next_followup_date: app.next_followup_date
-        ? new Date(app.next_followup_date).toISOString().slice(0, 16)
-        : "",
+      next_followup_date: app.next_followup_date ? app.next_followup_date.substring(0, 10) : "",
     });
     setIsEditModalOpen(true);
   };
 
-  // Save Edit
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingApp) return;
 
     setSavingEdit(true);
     const res = await updateApplicationApi(editingApp.id, {
-      status: editForm.status,
-      interview_stage: editForm.interview_stage.trim() || undefined,
-      referral_status: editForm.referral_status,
-      notes: editForm.notes.trim() || undefined,
-      next_action: editForm.next_action.trim() || undefined,
-      next_followup_date: editForm.next_followup_date
-        ? new Date(editForm.next_followup_date).toISOString()
-        : undefined,
+      status: editForm.status as any,
+      interview_stage: editForm.interview_stage || undefined,
+      referral_status: editForm.referral_status || undefined,
+      notes: editForm.notes || undefined,
+      next_action: editForm.next_action || undefined,
+      next_followup_date: editForm.next_followup_date ? new Date(editForm.next_followup_date).toISOString() : undefined,
     });
     setSavingEdit(false);
 
     if (res.data) {
       setIsEditModalOpen(false);
-      setSuccessMsg("Application updated.");
-      setTimeout(() => setSuccessMsg(null), 2500);
-      loadKanban();
+      loadData();
     } else {
-      setError(res.error || "Failed to save application changes");
+      alert(res.error || "Failed to save application changes");
     }
   };
 
-  // Delete Application
-  const handleDelete = async (appId: string, company: string, role: string) => {
-    if (!confirm(`Are you sure you want to remove ${role} at ${company} from CRM?`)) return;
-
+  const handleDeleteApp = async (appId: string) => {
+    if (!confirm("Are you sure you want to remove this application?")) return;
     const res = await deleteApplicationApi(appId);
-    if (res.data?.success) {
-      setSuccessMsg("Application removed.");
-      setTimeout(() => setSuccessMsg(null), 2500);
-      loadKanban();
-    } else {
-      setError(res.error || "Failed to delete application");
-    }
-  };
-
-  // Open Add Application Modal
-  const openAddModal = async () => {
-    setIsAddModalOpen(true);
-    const res = await fetchJobsApi();
     if (res.data) {
-      setJobs(res.data);
-      if (res.data.length > 0 && !selectedJobId) {
-        setSelectedJobId(res.data[0].id);
-      }
+      setIsEditModalOpen(false);
+      loadData();
     }
   };
 
-  // Submit Add Application
-  const handleCreateApplication = async (e: React.FormEvent) => {
+  const handleCreateApp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedJobId) {
-      setError("Please select a target job.");
-      return;
-    }
+    if (!selectedJobId) return;
 
     setCreatingApp(true);
     const res = await createApplicationApi({
       job_id: selectedJobId,
-      status: addStatus,
-      notes: addNotes.trim() || undefined,
-      next_action: addNextAction.trim() || undefined,
+      status: addStatus as any,
+      notes: addNotes || undefined,
+      next_action: addNextAction || undefined,
     });
     setCreatingApp(false);
 
     if (res.data) {
       setIsAddModalOpen(false);
-      setSuccessMsg(`Added ${res.data.job?.role || "application"} to ${addStatus} stage!`);
-      setTimeout(() => setSuccessMsg(null), 3000);
-      loadKanban();
+      setAddNotes("");
+      setAddNextAction("");
+      loadData();
     } else {
-      setError(res.error || "Failed to track application");
+      alert(res.error || "Failed to track application");
     }
   };
 
-  // Drag and drop handlers
-  const handleDragStart = (e: React.DragEvent, appId: string) => {
-    e.dataTransfer.setData("text/plain", appId);
-    setDraggedAppId(appId);
-  };
+  // Flattened applications for List View
+  const allApplicationsList = useMemo(() => {
+    const list: Application[] = [];
+    Object.values(boardData).forEach((col) => {
+      list.push(...col);
+    });
+    return list;
+  }, [boardData]);
 
-  const handleDragOver = (e: React.DragEvent, colId: string) => {
-    e.preventDefault();
-    setDragOverColumn(colId);
-  };
-
-  const handleDrop = (e: React.DragEvent, targetColId: string) => {
-    e.preventDefault();
-    const appId = e.dataTransfer.getData("text/plain");
-    setDragOverColumn(null);
-    setDraggedAppId(null);
-    if (appId) {
-      handleMoveStage(appId, targetColId);
-    }
-  };
-
-  const getMatchScoreBadge = (score?: number | null) => {
-    if (!score) return null;
-    let color = "text-rose-400 bg-rose-500/10 border-rose-500/20";
-    if (score >= 80) color = "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
-    else if (score >= 60) color = "text-amber-400 bg-amber-500/10 border-amber-500/20";
-
-    return (
-      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${color}`}>
-        {score}% Match
-      </span>
-    );
-  };
-
-  const getReferralBadge = (referralStatus?: string | null) => {
-    if (!referralStatus || referralStatus === "none") return null;
-    return (
-      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 flex items-center space-x-1">
-        <Users className="w-2.5 h-2.5 text-indigo-400" />
-        <span className="capitalize">{referralStatus}</span>
-      </span>
-    );
-  };
-
-  const formatFollowup = (dateStr?: string | null) => {
-    if (!dateStr) return null;
-    const date = new Date(dateStr);
-    const now = new Date();
-    const isPast = date < now;
-
-    return (
-      <span
-        className={`flex items-center space-x-1 text-[11px] font-medium ${
-          isPast ? "text-rose-400 font-semibold" : "text-slate-400"
-        }`}
-        title={`Follow-up deadline: ${date.toLocaleString()}`}
-      >
-        <Calendar className="w-3 h-3 text-slate-500" />
-        <span>{date.toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
-      </span>
-    );
-  };
+  // List View Columns
+  const listColumns: Column<Application>[] = [
+    {
+      key: "role",
+      header: "Role & Company",
+      render: (app) => (
+        <div>
+          <span className="font-semibold text-slate-900 block">{app.job?.role || "Software Engineer"}</span>
+          <span className="text-slate-500">{app.job?.company || "Company"}</span>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (app) => (
+        <Badge
+          variant={
+            app.status === "OFFER"
+              ? "success"
+              : app.status === "INTERVIEW"
+              ? "blue"
+              : app.status === "REJECTED"
+              ? "error"
+              : "neutral"
+          }
+          size="sm"
+        >
+          {app.status}
+        </Badge>
+      ),
+    },
+    {
+      key: "next_action",
+      header: "Next Action",
+      render: (app) => (
+        <span className="text-slate-600 line-clamp-1">
+          {app.next_action || "—"}
+        </span>
+      ),
+    },
+    {
+      key: "next_followup_date",
+      header: "Follow-up",
+      render: (app) => (
+        <span className="font-mono text-slate-500">
+          {app.next_followup_date ? new Date(app.next_followup_date).toLocaleDateString() : "—"}
+        </span>
+      ),
+    },
+    {
+      key: "created_at",
+      header: "Tracked Date",
+      render: (app) => (
+        <span className="font-mono text-slate-500">
+          {new Date(app.created_at).toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      className: "text-right",
+      render: (app) => (
+        <div className="flex items-center justify-end gap-1.5">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEditClick(app);
+            }}
+          >
+            Edit
+          </Button>
+          <Link
+            href={`/jobs/${app.job_id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="p-1 rounded text-slate-400 hover:text-slate-700"
+            title="View Job"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <div className="max-w-[1700px] mx-auto px-4 py-8 space-y-6 animate-fadeIn">
+    <div className="space-y-8 pb-20">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800/80 pb-6">
-        <div className="space-y-1">
-          <div className="flex items-center space-x-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-brand-400">
-              Phase 11
-            </span>
-            <span className="text-slate-600">•</span>
-            <span className="text-xs text-slate-400">Application CRM & Kanban</span>
-          </div>
-          <h1 className="text-3xl font-black text-white tracking-tight flex items-center space-x-3">
-            <span>Application Kanban Board</span>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20 font-mono">
-              {totalApps} Total
-            </span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">
+            Application Pipeline CRM
           </h1>
-          <p className="text-xs text-slate-400">
-            Track applications, tailored resumes, referral connections, follow-ups, and interview rounds.
+          <p className="text-sm text-slate-500 mt-1">
+            Track job opportunities through all stages, schedule follow-ups, and coordinate interviews.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Search Bar */}
-          <div className="relative w-64">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search applications..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                loadKanban(e.target.value);
-              }}
-              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-brand-500"
+        <div className="flex items-center gap-2">
+          {/* View mode toggle */}
+          <div className="p-1 rounded-xl bg-slate-100 border border-slate-200 flex items-center">
+            <button
+              onClick={() => setViewMode("kanban")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
+                viewMode === "kanban"
+                  ? "bg-white text-slate-900 shadow-subtle font-semibold"
+                  : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              <Kanban className="w-3.5 h-3.5" />
+              <span>Kanban</span>
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
+                viewMode === "list"
+                  ? "bg-white text-slate-900 shadow-subtle font-semibold"
+                  : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              <List className="w-3.5 h-3.5" />
+              <span>List View</span>
+            </button>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => loadData()}
+            icon={<RefreshCw className="w-3.5 h-3.5" />}
+          >
+            Refresh
+          </Button>
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setIsAddModalOpen(true)}
+            icon={<Plus className="w-4 h-4" />}
+          >
+            Track Application
+          </Button>
+        </div>
+      </div>
+
+      {/* Search Input Toolbar */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="max-w-md w-full">
+          <Input
+            placeholder="Search tracked applications..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              loadData(e.target.value);
+            }}
+            icon={<Search className="w-4 h-4" />}
+          />
+        </div>
+
+        <div className="text-xs text-slate-500 font-mono">
+          {totalApps} Total Applications Tracked
+        </div>
+      </div>
+
+      {loading ? (
+        <LoadingState message="Loading CRM pipeline stages..." />
+      ) : error ? (
+        <ErrorState title="Failed to load applications" error={error} onRetry={() => loadData()} />
+      ) : viewMode === "kanban" ? (
+        /* KANBAN BOARD VIEW */
+        <div className="overflow-x-auto pb-6">
+          <div className="flex gap-4 min-w-[1280px]">
+            {KANBAN_COLUMNS.map((col) => {
+              const items = boardData[col.id] || [];
+
+              return (
+                <div
+                  key={col.id}
+                  className="flex-1 min-w-[280px] rounded-2xl border border-slate-200/90 bg-slate-50/50 p-3.5 flex flex-col justify-between"
+                >
+                  {/* Column Header */}
+                  <div>
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs font-semibold text-slate-900 tracking-tight">
+                          {col.label}
+                        </span>
+                        <span className="text-[11px] font-mono px-2 py-0.2 rounded-full bg-white border border-slate-200 text-slate-600 font-medium">
+                          {items.length}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Column Cards */}
+                    <div className="space-y-2.5">
+                      {items.map((app) => (
+                        <div
+                          key={app.id}
+                          onClick={() => handleEditClick(app)}
+                          className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-card hover:border-slate-300 hover:shadow-dropdown transition-all cursor-pointer space-y-2"
+                        >
+                          {/* Company & Role */}
+                          <div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-semibold text-slate-500 truncate">
+                                {app.job?.company || "Company"}
+                              </span>
+                              {app.job?.location && (
+                                <span className="text-[11px] text-slate-400 truncate">
+                                  {app.job.location}
+                                </span>
+                              )}
+                            </div>
+                            <h4 className="text-sm font-semibold text-slate-900 tracking-tight line-clamp-1 mt-0.5">
+                              {app.job?.role || "Software Engineer"}
+                            </h4>
+                          </div>
+
+                          {/* Next Action & Follow-up */}
+                          {app.next_action && (
+                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-100 text-[11px] text-slate-700 line-clamp-2">
+                              <strong className="text-slate-900 font-medium">Next:</strong> {app.next_action}
+                            </div>
+                          )}
+
+                          {/* Footer */}
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                            <span className="font-mono">
+                              {new Date(app.created_at).toLocaleDateString()}
+                            </span>
+                            {app.next_followup_date && (
+                              <span className="flex items-center gap-1 text-slate-600">
+                                <Clock className="w-3 h-3 text-slate-400" />
+                                <span>{new Date(app.next_followup_date).toLocaleDateString()}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+
+                      {items.length === 0 && (
+                        <div className="py-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">
+                          No applications
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        /* DENSE LIST VIEW */
+        <Table
+          columns={listColumns}
+          data={allApplicationsList}
+          keyExtractor={(app) => app.id}
+          onRowClick={(app) => handleEditClick(app)}
+          emptyText="No applications tracked yet."
+        />
+      )}
+
+      {/* Edit / Details Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title={editingApp?.job?.role || "Application Details"}
+        description={`${editingApp?.job?.company || "Company"} • Tracked since ${editingApp?.created_at ? new Date(editingApp.created_at).toLocaleDateString() : ""}`}
+      >
+        <form onSubmit={handleSaveEdit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <Select
+              label="Application Stage"
+              value={editForm.status}
+              onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+            >
+              {KANBAN_COLUMNS.map((col) => (
+                <option key={col.id} value={col.id}>
+                  {col.label}
+                </option>
+              ))}
+            </Select>
+
+            <Input
+              label="Interview Stage (Optional)"
+              placeholder="e.g. System Design, Recruiter Screen"
+              value={editForm.interview_stage}
+              onChange={(e) => setEditForm({ ...editForm, interview_stage: e.target.value })}
             />
           </div>
 
-          <button
-            type="button"
-            onClick={() => loadKanban()}
-            disabled={loading}
-            className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-all shadow-sm disabled:opacity-50"
-            title="Refresh Board"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-          </button>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Next Actionable Step"
+              placeholder="e.g. Prepare system design doc, Send thank you email"
+              value={editForm.next_action}
+              onChange={(e) => setEditForm({ ...editForm, next_action: e.target.value })}
+            />
 
-          <button
-            type="button"
-            onClick={openAddModal}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-brand-500/25 flex items-center space-x-1.5 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Track Application</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Notifications */}
-      {error && (
-        <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
-            <span>{error}</span>
+            <Input
+              label="Next Follow-up Date"
+              type="date"
+              value={editForm.next_followup_date}
+              onChange={(e) => setEditForm({ ...editForm, next_followup_date: e.target.value })}
+            />
           </div>
-          <button type="button" onClick={() => setError(null)} className="text-slate-400 hover:text-white">
-            ✕
-          </button>
-        </div>
-      )}
 
-      {successMsg && (
-        <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 flex items-center space-x-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{successMsg}</span>
-        </div>
-      )}
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1.5">
+              Internal Notes & Interview Takeaways
+            </label>
+            <textarea
+              rows={3}
+              value={editForm.notes}
+              onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+              placeholder="Notes on recruiters, questions asked, salary discussion..."
+              className="w-full rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-800"
+            />
+          </div>
 
-      {/* Kanban Board Horizontal Columns Container */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 pb-6 overflow-x-auto min-h-[680px]">
-        {KANBAN_STAGES.map((stage) => {
-          const appsInColumn = board[stage.id] || [];
-          const isDragOver = dragOverColumn === stage.id;
-
-          return (
-            <div
-              key={stage.id}
-              onDragOver={(e) => handleDragOver(e, stage.id)}
-              onDrop={(e) => handleDrop(e, stage.id)}
-              className={`rounded-3xl border flex flex-col transition-all min-h-[580px] p-3.5 space-y-3.5 ${stage.color} ${
-                isDragOver ? "ring-2 ring-brand-400 bg-slate-900/90" : "bg-slate-950/40"
-              }`}
+          <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              onClick={() => editingApp && handleDeleteApp(editingApp.id)}
             >
-              {/* Column Header */}
-              <div className="flex items-center justify-between px-1 pt-1 border-b border-slate-800/80 pb-2.5">
-                <div className="flex items-center space-x-2">
-                  <span className="font-bold text-xs text-white">{stage.label}</span>
-                  <span className="px-2 py-0.5 rounded-full bg-slate-800 text-[10px] font-mono font-bold text-slate-300">
-                    {appsInColumn.length}
-                  </span>
-                </div>
-              </div>
+              Remove
+            </Button>
 
-              {/* Cards List */}
-              <div className="flex-1 space-y-3 overflow-y-auto max-h-[640px] pr-1">
-                {appsInColumn.length === 0 ? (
-                  <div className="h-32 border-2 border-dashed border-slate-800/70 rounded-2xl flex flex-col items-center justify-center p-3 text-center text-slate-600 text-xs">
-                    <span>Drop application here</span>
-                  </div>
-                ) : (
-                  appsInColumn.map((app) => {
-                    const job = app.job;
-                    if (!job) return null;
-
-                    return (
-                      <div
-                        key={app.id}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, app.id)}
-                        className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-brand-500/40 transition-all shadow-md shadow-black/30 space-y-3 cursor-grab active:cursor-grabbing group hover:shadow-lg"
-                      >
-                        {/* Company & Role */}
-                        <div className="space-y-1">
-                          <div className="flex items-start justify-between gap-1">
-                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate max-w-[140px]">
-                              {job.company}
-                            </span>
-                            {getMatchScoreBadge(app.match_score)}
-                          </div>
-                          <Link
-                            href={`/jobs/${job.id}`}
-                            className="font-bold text-xs text-white hover:text-brand-300 transition-colors line-clamp-2"
-                          >
-                            {job.role}
-                          </Link>
-                        </div>
-
-                        {/* Badges: Resume Version & Referral Status */}
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {app.resume_version && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-purple-500/10 text-purple-300 border border-purple-500/20 flex items-center space-x-1">
-                              <FileCode className="w-2.5 h-2.5" />
-                              <span>Tailored v{app.resume_version.version_number}</span>
-                            </span>
-                          )}
-                          {getReferralBadge(app.referral_status)}
-                          {app.interview_stage && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                              {app.interview_stage}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Next Action & Followup Deadline */}
-                        {app.next_action && (
-                          <div className="p-2 rounded-xl bg-slate-950/70 border border-slate-800/80 text-[11px] text-slate-300 space-y-0.5">
-                            <div className="text-[9px] uppercase font-bold text-brand-400">
-                              Next Action
-                            </div>
-                            <p className="line-clamp-2">{app.next_action}</p>
-                          </div>
-                        )}
-
-                        {/* Footer: Date & Quick Actions */}
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs">
-                          {formatFollowup(app.next_followup_date) || (
-                            <span className="text-[10px] text-slate-500 font-mono">
-                              {new Date(app.updated_at).toLocaleDateString(undefined, {
-                                month: "short",
-                                day: "numeric",
-                              })}
-                            </span>
-                          )}
-
-                          <div className="flex items-center space-x-1">
-                            {/* Quick Stage Shift Dropdown */}
-                            <select
-                              value={stage.id}
-                              onChange={(e) => handleMoveStage(app.id, e.target.value)}
-                              className="px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-[10px] text-slate-300 focus:outline-none"
-                              title="Move stage"
-                            >
-                              {KANBAN_STAGES.map((s) => (
-                                <option key={s.id} value={s.id}>
-                                  {s.label}
-                                </option>
-                              ))}
-                            </select>
-
-                            <button
-                              type="button"
-                              onClick={() => openEdit(app)}
-                              className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
-                              title="Edit application"
-                            >
-                              <Edit2 className="w-3 h-3" />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(app.id, job.company, job.role)}
-                              className="p-1 rounded hover:bg-rose-900/30 text-slate-500 hover:text-rose-400 transition-colors"
-                              title="Delete from CRM"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Edit Application Modal */}
-      {isEditModalOpen && editingApp && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-5 animate-scaleUp">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div>
-                <h2 className="text-base font-bold text-white">Edit Application Tracking</h2>
-                <p className="text-xs text-slate-400">
-                  {editingApp.job?.role} at {editingApp.job?.company}
-                </p>
-              </div>
-              <button
+            <div className="flex items-center gap-2">
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => setIsEditModalOpen(false)}
-                className="text-slate-400 hover:text-white"
               >
-                ✕
-              </button>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                loading={savingEdit}
+              >
+                Save Changes
+              </Button>
             </div>
-
-            <form onSubmit={handleSaveEdit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Application Stage *
-                  </label>
-                  <select
-                    value={editForm.status}
-                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
-                  >
-                    <option value="SAVED">Saved</option>
-                    <option value="READY_TO_APPLY">Ready to Apply</option>
-                    <option value="APPLIED">Applied</option>
-                    <option value="SCREENING">Screening</option>
-                    <option value="INTERVIEW">Interview</option>
-                    <option value="TECHNICAL">Technical Round</option>
-                    <option value="FINAL_ROUND">Final Round</option>
-                    <option value="OFFER">Offer</option>
-                    <option value="REJECTED">Rejected</option>
-                    <option value="WITHDRAWN">Withdrawn</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Referral Status
-                  </label>
-                  <select
-                    value={editForm.referral_status}
-                    onChange={(e) => setEditForm({ ...editForm, referral_status: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
-                  >
-                    <option value="none">None</option>
-                    <option value="requested">Referral Requested</option>
-                    <option value="referred">Referred by Contact</option>
-                    <option value="contact_reached">Contact Reached</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Interview Sub-Stage (if applicable)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Hiring Manager Screen, System Design, Behavioral"
-                  value={editForm.interview_stage}
-                  onChange={(e) => setEditForm({ ...editForm, interview_stage: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Next Action
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Prepare 1-pager on distributed systems..."
-                  value={editForm.next_action}
-                  onChange={(e) => setEditForm({ ...editForm, next_action: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Next Follow-up Reminder
-                </label>
-                <input
-                  type="datetime-local"
-                  value={editForm.next_followup_date}
-                  onChange={(e) => setEditForm({ ...editForm, next_followup_date: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Notes
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Interview questions, recruiter feedback, salary notes..."
-                  value={editForm.notes}
-                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
-                />
-              </div>
-
-              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-xs font-semibold text-slate-300 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingEdit}
-                  className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-xs font-bold text-white shadow-md shadow-brand-500/20 disabled:opacity-50"
-                >
-                  {savingEdit ? "Saving..." : "Save Application"}
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
+        </form>
+      </Modal>
 
       {/* Add Application Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-5 animate-scaleUp">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h2 className="text-base font-bold text-white">Track New Opportunity in CRM</h2>
-              <button
-                type="button"
-                onClick={() => setIsAddModalOpen(false)}
-                className="text-slate-400 hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
+      <Modal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        title="Track New Application"
+        description="Select a discovered job opportunity to track in your CRM pipeline."
+      >
+        <form onSubmit={handleCreateApp} className="space-y-4">
+          <Select
+            label="Job Opportunity *"
+            value={selectedJobId}
+            onChange={(e) => setSelectedJobId(e.target.value)}
+            required
+          >
+            {jobs.map((j) => (
+              <option key={j.id} value={j.id}>
+                {j.role} at {j.company} ({j.location || "Remote"})
+              </option>
+            ))}
+          </Select>
 
-            <form onSubmit={handleCreateApplication} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Target Job *
-                </label>
-                {jobs.length === 0 ? (
-                  <p className="text-xs text-amber-400">
-                    No jobs analyzed yet. Please import or analyze a job first.
-                  </p>
-                ) : (
-                  <select
-                    value={selectedJobId}
-                    onChange={(e) => setSelectedJobId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
-                  >
-                    {jobs.map((j) => (
-                      <option key={j.id} value={j.id}>
-                        {j.role} at {j.company}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
+          <Select
+            label="Initial Status"
+            value={addStatus}
+            onChange={(e) => setAddStatus(e.target.value)}
+          >
+            {KANBAN_COLUMNS.map((col) => (
+              <option key={col.id} value={col.id}>
+                {col.label}
+              </option>
+            ))}
+          </Select>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Initial Stage *
-                </label>
-                <select
-                  value={addStatus}
-                  onChange={(e) => setAddStatus(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
-                >
-                  <option value="SAVED">Saved</option>
-                  <option value="READY_TO_APPLY">Ready to Apply</option>
-                  <option value="APPLIED">Applied</option>
-                  <option value="SCREENING">Screening</option>
-                  <option value="INTERVIEW">Interview</option>
-                  <option value="OFFER">Offer</option>
-                </select>
-              </div>
+          <Input
+            label="Next Action Step (Optional)"
+            placeholder="e.g. Tailor resume and find alumni contact"
+            value={addNextAction}
+            onChange={(e) => setAddNextAction(e.target.value)}
+          />
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Next Action (optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Request referral or tailor resume..."
-                  value={addNextAction}
-                  onChange={(e) => setAddNextAction(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Notes
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="e.g. Direct referral pathway identified; tailoring resume..."
-                  value={addNotes}
-                  onChange={(e) => setAddNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-brand-500"
-                />
-              </div>
-
-              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-xs font-semibold text-slate-300 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={creatingApp || jobs.length === 0}
-                  className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-xs font-bold text-white shadow-md shadow-brand-500/20 disabled:opacity-50 flex items-center space-x-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>{creatingApp ? "Tracking..." : "Add Application"}</span>
-                </button>
-              </div>
-            </form>
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1.5">
+              Initial Notes (Optional)
+            </label>
+            <textarea
+              rows={2}
+              value={addNotes}
+              onChange={(e) => setAddNotes(e.target.value)}
+              placeholder="e.g. Applied via internal referral link..."
+              className="w-full rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-800"
+            />
           </div>
-        </div>
-      )}
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAddModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={creatingApp}
+              disabled={!selectedJobId}
+            >
+              Track Opportunity
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

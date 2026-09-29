@@ -254,3 +254,10 @@ async def test_get_tailored_resume_endpoints(async_client: AsyncClient, db_sessi
     res2 = await async_client.get(f"/api/resumes/versions/{version.id}")
     assert res2.status_code == 200
     assert res2.json()["id"] == version.id
+
+    # Test GET all versions
+    res3 = await async_client.get("/api/resumes/versions")
+    assert res3.status_code == 200
+    versions_list = res3.json()
+    assert len(versions_list) >= 1
+    assert any(v["id"] == version.id for v in versions_list)

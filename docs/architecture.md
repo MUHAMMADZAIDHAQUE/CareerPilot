@@ -387,3 +387,23 @@ flowchart TD
    - `texlive`: Sandboxed LaTeX compilation worker
    - `n8n`: Workflow automation engine
 4. **Telemetry & Auditability:** Structured JSON request logging, LangSmith / Langfuse tracing for agent runs, and immutable match audit logs.
+
+---
+
+## 11. Frontend Presentation Architecture & Design System
+
+The frontend presentation layer has been designed according to an executive minimalist aesthetic (inspired by [TryRote](https://tryrote.com/)), tailored for high-stakes career management.
+
+1. **Visual Language**: Pristine white canvas (`#FFFFFF`) with off-white card backgrounds (`#F8FAFC`), deep charcoal slate-900 typography, subtle 1px border dividers (`#E2E8F0`), and translucent navigation headers (`bg-white/80 backdrop-blur-md`).
+2. **Component Token Consistency**: All interactive surfaces, buttons, modals, badges, inputs, and feedback states conform to unified tokens defined in `docs/design-system.md`.
+3. **Deterministic State Handling**: Every asynchronous operation implements explicit `LoadingState`, `EmptyState`, and `ErrorState` components with retry hooks.
+4. **SSR & Suspense Isolation**: Dynamic query param hooks (`useSearchParams`) are isolated within `<React.Suspense>` boundaries to guarantee zero-bailout Next.js 14 production builds.
+
+---
+
+## 12. Local Resilience & Dev Database Fallback
+
+While production environments utilize PostgreSQL 16 with `pgvector`, the local development and testing environment automatically features an in-process SQLite fallback (`data/careerpilot_dev.db` via `aiosqlite`).
+- Ensures instant developer onboarding without mandatory external Docker daemon dependencies.
+- Automatically executes ORM table synchronization (`Base.metadata.create_all`) on startup.
+- Complete feature parity across CRUD, match calculations, and agent pipelines.

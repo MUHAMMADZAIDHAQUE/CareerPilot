@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import Link from "next/link";
 import {
   Briefcase,
-  Search,
   Sparkles,
   MapPin,
   Clock,
@@ -24,9 +23,11 @@ import {
   ChevronUp,
   ChevronRight,
   FileText,
-  HelpCircle,
 } from "lucide-react";
 import { analyzeJobApi, Job, AnalyzeJobPayload } from "@/lib/api";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
+import Badge from "@/components/ui/Badge";
 
 const SAMPLE_JDS = [
   {
@@ -153,30 +154,30 @@ export default function JobAnalyzePage() {
   return (
     <div className="space-y-10">
       {/* Hero Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-800">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-200">
         <div>
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-medium mb-3">
-            <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-            <span>Phase 4 Active • Structured JD Analyzer</span>
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-800 text-xs font-semibold mb-3">
+            <Sparkles className="w-3.5 h-3.5 mr-1" />
+            <span>Structured JD Analyzer</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-            Job Description <span className="text-gradient">Analyzer</span>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+            Job Description Analyzer
           </h1>
-          <p className="text-slate-400 mt-2 max-w-2xl text-sm sm:text-base">
+          <p className="text-slate-500 mt-2 max-w-2xl text-sm sm:text-base leading-relaxed">
             Extract verified requirements, categorize mandatory vs preferred skills, and dissect architectural expectations with strict anti-hallucination guarantees.
           </p>
         </div>
 
         {/* Quick Sample Selector */}
         <div className="flex flex-col items-start md:items-end gap-2">
-          <span className="text-xs text-slate-400 font-medium">Quick Test with Sample JDs:</span>
+          <span className="text-xs text-slate-500 font-medium">Quick Test with Sample JDs:</span>
           <div className="flex flex-wrap gap-2">
             {SAMPLE_JDS.map((sample, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => handleSelectSample(sample)}
-                className="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 text-xs font-medium text-slate-300 hover:text-white transition-all hover:border-brand-500/50 shadow-sm"
+                className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-medium text-slate-700 hover:text-slate-900 transition-colors shadow-sm"
               >
                 {sample.label}
               </button>
@@ -186,14 +187,12 @@ export default function JobAnalyzePage() {
       </div>
 
       {/* Main Analysis Form */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/5 rounded-full blur-3xl -z-10" />
-
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-sm relative">
         <form onSubmit={handleAnalyze} className="space-y-6">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label htmlFor="job-description-input" className="text-sm font-semibold text-slate-200 flex items-center space-x-2">
-                <FileText className="w-4 h-4 text-brand-400" />
+              <label htmlFor="job-description-input" className="text-sm font-semibold text-slate-800 flex items-center space-x-2">
+                <FileText className="w-4 h-4 text-slate-500 mr-1" />
                 <span>Job Description Content *</span>
               </label>
               <span className="text-xs text-slate-400 font-mono">
@@ -206,7 +205,7 @@ export default function JobAnalyzePage() {
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
               placeholder="Paste raw job description here... (e.g. from LinkedIn, Greenhouse, Lever, Workday)"
-              className="w-full rounded-xl bg-slate-950/70 border border-slate-800/80 p-4 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all font-mono leading-relaxed"
+              className="w-full rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition-all font-mono leading-relaxed"
               required
             />
           </div>
@@ -216,16 +215,16 @@ export default function JobAnalyzePage() {
             <button
               type="button"
               onClick={() => setShowOptionalFields(!showOptionalFields)}
-              className="text-xs text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 transition-colors"
+              className="text-xs text-slate-600 hover:text-slate-900 flex items-center space-x-1.5 transition-colors font-medium"
             >
               <span>{showOptionalFields ? "Hide optional metadata fields" : "Add optional metadata (Company, Role, URL)"}</span>
               {showOptionalFields ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
 
             {showOptionalFields && (
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-800/60">
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-100">
                 <div>
-                  <label htmlFor="job-company-input" className="text-xs font-medium text-slate-300 block mb-1">
+                  <label htmlFor="job-company-input" className="text-xs font-semibold text-slate-700 block mb-1">
                     Company Name
                   </label>
                   <input
@@ -234,11 +233,11 @@ export default function JobAnalyzePage() {
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
                     placeholder="e.g. Stripe, OpenAI, Apex"
-                    className="w-full px-3 py-2 text-xs rounded-lg bg-slate-950/70 border border-slate-800 text-slate-100 focus:ring-1 focus:ring-brand-500 focus:outline-none"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-slate-900 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label htmlFor="job-role-input" className="text-xs font-medium text-slate-300 block mb-1">
+                  <label htmlFor="job-role-input" className="text-xs font-semibold text-slate-700 block mb-1">
                     Role Title
                   </label>
                   <input
@@ -247,11 +246,11 @@ export default function JobAnalyzePage() {
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
                     placeholder="e.g. Staff Backend Engineer"
-                    className="w-full px-3 py-2 text-xs rounded-lg bg-slate-950/70 border border-slate-800 text-slate-100 focus:ring-1 focus:ring-brand-500 focus:outline-none"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-slate-900 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label htmlFor="job-url-input" className="text-xs font-medium text-slate-300 block mb-1">
+                  <label htmlFor="job-url-input" className="text-xs font-semibold text-slate-700 block mb-1">
                     Job / Application URL
                   </label>
                   <input
@@ -260,7 +259,7 @@ export default function JobAnalyzePage() {
                     value={jobUrl}
                     onChange={(e) => setJobUrl(e.target.value)}
                     placeholder="https://..."
-                    className="w-full px-3 py-2 text-xs rounded-lg bg-slate-950/70 border border-slate-800 text-slate-100 focus:ring-1 focus:ring-brand-500 focus:outline-none"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-slate-900 focus:outline-none"
                   />
                 </div>
               </div>
@@ -269,18 +268,18 @@ export default function JobAnalyzePage() {
 
           {/* Error Message */}
           {error && (
-            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-start space-x-3">
+            <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm flex items-start space-x-3">
               <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold">Analysis Failed</p>
-                <p className="text-xs text-red-300/80 mt-1">{error}</p>
+                <p className="text-xs text-rose-600 mt-1">{error}</p>
               </div>
             </div>
           )}
 
           {/* Action Buttons */}
           <div className="flex items-center justify-between pt-2">
-            <button
+            <Button
               type="button"
               onClick={() => {
                 setJobDescription("");
@@ -290,60 +289,60 @@ export default function JobAnalyzePage() {
                 setError(null);
                 setAnalyzedJob(null);
               }}
-              className="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-all"
+              variant="ghost"
+              size="sm"
             >
               Clear Form
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="submit"
               id="analyze-job-button"
               disabled={loading || !jobDescription.trim()}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-accent-cyan hover:from-brand-500 hover:to-accent-cyan text-white text-sm font-semibold shadow-lg shadow-brand-500/20 transition-all flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed group cursor-pointer"
+              variant="primary"
+              size="md"
             >
               {loading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
                   <span>Extracting Structured Facts...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  <Sparkles className="w-4 h-4 mr-2" />
                   <span>Analyze Job</span>
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
 
       {/* Analysis Results Display */}
       {analyzedJob && (
-        <div id="analysis-results" className="space-y-8 animate-fadeIn">
+        <div id="analysis-results" className="space-y-8 animate-in fade-in duration-300">
           {/* Header Card */}
-          <div className="bg-gradient-to-r from-slate-900 to-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 backdrop-blur-xl shadow-xl relative overflow-hidden">
+          <Card className="p-6 sm:p-8 space-y-6">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-brand-500/20 text-brand-300 border border-brand-500/30">
-                    {analyzedJob.domain || "Technology"}
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                  <Badge variant="neutral">{analyzedJob.domain || "Technology"}</Badge>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-slate-100 text-slate-600 border border-slate-200">
                     ID: {analyzedJob.id.slice(0, 8)}...
                   </span>
                 </div>
                 <div>
-                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
                     {analyzedJob.role}
                   </h2>
-                  <div className="flex items-center space-x-2 text-slate-300 mt-1 font-medium">
-                    <Building2 className="w-4 h-4 text-brand-400" />
+                  <div className="flex items-center space-x-2 text-slate-700 mt-1 font-medium">
+                    <Building2 className="w-4 h-4 text-slate-500" />
                     <span>{analyzedJob.company}</span>
                   </div>
                 </div>
 
                 {/* Metadata Pills */}
-                <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300 pt-2">
+                <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600 pt-1">
                   <div className="flex items-center space-x-1.5">
                     <MapPin className="w-4 h-4 text-slate-400" />
                     <span>{analyzedJob.location || "Remote"}</span>
@@ -353,13 +352,13 @@ export default function JobAnalyzePage() {
                     <span>{analyzedJob.employment_type || "Full-time"}</span>
                   </div>
                   {analyzedJob.salary && (
-                    <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-semibold">
+                    <div className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold">
                       <DollarSign className="w-3.5 h-3.5" />
                       <span>{analyzedJob.salary}</span>
                     </div>
                   )}
                   {analyzedJob.deadline && (
-                    <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-300">
+                    <div className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
                       <Calendar className="w-3.5 h-3.5" />
                       <span>Apply by {analyzedJob.deadline}</span>
                     </div>
@@ -368,14 +367,13 @@ export default function JobAnalyzePage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-wrap lg:flex-col gap-3 justify-end items-end">
-                <Link
-                  href={`/jobs/${analyzedJob.id}`}
-                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-accent-cyan hover:from-brand-500 hover:to-accent-cyan text-xs font-bold text-white flex items-center space-x-2 transition-all shadow-lg shadow-brand-500/25"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Evaluate Match (Phase 5)</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
+              <div className="flex flex-wrap lg:flex-col gap-2.5 justify-end items-end">
+                <Link href={`/jobs/${analyzedJob.id}`}>
+                  <Button variant="primary" size="sm">
+                    <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                    <span>Evaluate Match</span>
+                    <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                  </Button>
                 </Link>
 
                 {analyzedJob.application_url && (
@@ -383,53 +381,55 @@ export default function JobAnalyzePage() {
                     href={analyzedJob.application_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white flex items-center space-x-1.5 transition-all shadow-sm"
                   >
-                    <span>View Application</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
+                    <Button variant="outline" size="sm">
+                      <span>View Application</span>
+                      <ExternalLink className="w-3.5 h-3.5 ml-1.5" />
+                    </Button>
                   </a>
                 )}
-                <button
+                <Button
                   type="button"
                   onClick={copyResultsJson}
-                  className="px-4 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 text-xs font-medium text-slate-300 hover:text-white flex items-center space-x-1.5 transition-all"
+                  variant="ghost"
+                  size="sm"
                 >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copied ? "Copied JSON" : "Copy Structured Data"}</span>
-                </button>
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-600 mr-1.5" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
+                  <span>{copied ? "Copied JSON" : "Copy Data"}</span>
+                </Button>
               </div>
             </div>
 
             {/* Summary */}
             {analyzedJob.summary && (
-              <div className="mt-6 pt-6 border-t border-slate-800">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+              <div className="pt-6 border-t border-slate-100">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
                   Job Summary
                 </h3>
-                <p className="text-sm text-slate-200 leading-relaxed">
+                <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200/60">
                   {analyzedJob.summary}
                 </p>
               </div>
             )}
-          </div>
+          </Card>
 
           {/* Skills Breakdown: Required vs Preferred vs Inferred */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* 1. Required Skills */}
-            <div className="bg-slate-900/60 border border-emerald-500/30 rounded-2xl p-6 backdrop-blur-xl shadow-lg relative overflow-hidden">
-              <div className="flex items-center justify-between mb-4">
+            <Card className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
                     <CheckCircle2 className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-white">Required Skills</h3>
-                    <p className="text-xs text-emerald-400/80">Strict Minimums</p>
+                    <h3 className="font-bold text-sm text-slate-900">Required Skills</h3>
+                    <p className="text-[11px] text-slate-500">Strict Minimums</p>
                   </div>
                 </div>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <Badge variant="success">
                   {analyzedJob.required_skills.length}
-                </span>
+                </Badge>
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -437,7 +437,7 @@ export default function JobAnalyzePage() {
                   analyzedJob.required_skills.map((skill, i) => (
                     <span
                       key={i}
-                      className="px-2.5 py-1 text-xs font-medium rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
+                      className="px-2.5 py-1 text-xs font-medium rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200"
                     >
                       {skill}
                     </span>
@@ -446,23 +446,23 @@ export default function JobAnalyzePage() {
                   <p className="text-xs text-slate-400 italic">No explicit required skills found.</p>
                 )}
               </div>
-            </div>
+            </Card>
 
             {/* 2. Preferred Skills */}
-            <div className="bg-slate-900/60 border border-cyan-500/30 rounded-2xl p-6 backdrop-blur-xl shadow-lg relative overflow-hidden">
-              <div className="flex items-center justify-between mb-4">
+            <Card className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center">
                     <Sparkles className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-white">Preferred Skills</h3>
-                    <p className="text-xs text-cyan-400/80">Nice-to-Have Pluses</p>
+                    <h3 className="font-bold text-sm text-slate-900">Preferred Skills</h3>
+                    <p className="text-[11px] text-slate-500">Nice-to-Have Pluses</p>
                   </div>
                 </div>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                <Badge variant="neutral">
                   {analyzedJob.preferred_skills.length}
-                </span>
+                </Badge>
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -470,7 +470,7 @@ export default function JobAnalyzePage() {
                   analyzedJob.preferred_skills.map((skill, i) => (
                     <span
                       key={i}
-                      className="px-2.5 py-1 text-xs font-medium rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/30"
+                      className="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 text-slate-800 border border-slate-200"
                     >
                       {skill}
                     </span>
@@ -479,23 +479,23 @@ export default function JobAnalyzePage() {
                   <p className="text-xs text-slate-400 italic">No optional preferred skills stated.</p>
                 )}
               </div>
-            </div>
+            </Card>
 
             {/* 3. Inferred Architectural Concepts */}
-            <div className="bg-slate-900/60 border border-purple-500/30 rounded-2xl p-6 backdrop-blur-xl shadow-lg relative overflow-hidden">
-              <div className="flex items-center justify-between mb-4">
+            <Card className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center">
                     <Cpu className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-white">Inferred Concepts</h3>
-                    <p className="text-xs text-purple-400/80">Domain Architecture</p>
+                    <h3 className="font-bold text-sm text-slate-900">Inferred Concepts</h3>
+                    <p className="text-[11px] text-slate-500">Domain Architecture</p>
                   </div>
                 </div>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                <Badge variant="neutral">
                   {analyzedJob.inferred_concepts.length}
-                </span>
+                </Badge>
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -503,7 +503,7 @@ export default function JobAnalyzePage() {
                   analyzedJob.inferred_concepts.map((concept, i) => (
                     <span
                       key={i}
-                      className="px-2.5 py-1 text-xs font-medium rounded-lg bg-purple-500/10 text-purple-300 border border-purple-500/30"
+                      className="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 text-slate-800 border border-slate-200"
                     >
                       {concept}
                     </span>
@@ -512,22 +512,22 @@ export default function JobAnalyzePage() {
                   <p className="text-xs text-slate-400 italic">No inferred concepts extracted.</p>
                 )}
               </div>
-            </div>
+            </Card>
           </div>
 
           {/* Responsibilities & Qualifications Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Responsibilities */}
-            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 backdrop-blur-xl">
-              <h3 className="font-bold text-base text-white flex items-center space-x-2 mb-4">
-                <Layers className="w-4 h-4 text-brand-400" />
+            <Card className="p-6 space-y-4">
+              <h3 className="font-bold text-sm text-slate-900 flex items-center space-x-2">
+                <Layers className="w-4 h-4 text-slate-600" />
                 <span>Key Responsibilities</span>
               </h3>
               {analyzedJob.responsibilities.length > 0 ? (
                 <ul className="space-y-3">
                   {analyzedJob.responsibilities.map((resp, i) => (
-                    <li key={i} className="flex items-start space-x-3 text-xs sm:text-sm text-slate-300">
-                      <span className="w-1.5 h-1.5 rounded-full bg-brand-400 mt-2 flex-shrink-0" />
+                    <li key={i} className="flex items-start space-x-3 text-xs sm:text-sm text-slate-700">
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-2 flex-shrink-0" />
                       <span className="leading-relaxed">{resp}</span>
                     </li>
                   ))}
@@ -535,32 +535,32 @@ export default function JobAnalyzePage() {
               ) : (
                 <p className="text-xs text-slate-400 italic">No bulleted responsibilities parsed.</p>
               )}
-            </div>
+            </Card>
 
             {/* Experience & Education & Qualifications */}
             <div className="space-y-6">
               {/* Experience Requirement */}
-              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 backdrop-blur-xl">
-                <h3 className="font-bold text-sm text-white flex items-center space-x-2 mb-2">
-                  <Clock className="w-4 h-4 text-amber-400" />
+              <Card className="p-6 space-y-2">
+                <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 flex items-center space-x-2">
+                  <Clock className="w-3.5 h-3.5" />
                   <span>Experience Requirement</span>
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-200">
+                <p className="text-xs sm:text-sm text-slate-800 font-medium">
                   {analyzedJob.experience_requirement || "Not explicitly specified in years."}
                 </p>
-              </div>
+              </Card>
 
               {/* Education Requirement */}
-              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 backdrop-blur-xl">
-                <h3 className="font-bold text-sm text-white flex items-center space-x-2 mb-2">
-                  <GraduationCap className="w-4 h-4 text-cyan-400" />
+              <Card className="p-6 space-y-3">
+                <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 flex items-center space-x-2">
+                  <GraduationCap className="w-3.5 h-3.5" />
                   <span>Education Requirements</span>
                 </h3>
                 {analyzedJob.education_requirements.length > 0 ? (
                   <ul className="space-y-2">
                     {analyzedJob.education_requirements.map((edu, i) => (
-                      <li key={i} className="text-xs sm:text-sm text-slate-300 flex items-center space-x-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+                      <li key={i} className="text-xs sm:text-sm text-slate-700 flex items-center space-x-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
                         <span>{edu}</span>
                       </li>
                     ))}
@@ -568,74 +568,74 @@ export default function JobAnalyzePage() {
                 ) : (
                   <p className="text-xs text-slate-400 italic">No specific degrees required.</p>
                 )}
-              </div>
+              </Card>
 
               {/* Technologies Mentioned */}
-              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 backdrop-blur-xl">
-                <h3 className="font-bold text-sm text-white flex items-center space-x-2 mb-3">
-                  <Code2 className="w-4 h-4 text-brand-400" />
+              <Card className="p-6 space-y-3">
+                <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 flex items-center space-x-2">
+                  <Code2 className="w-3.5 h-3.5" />
                   <span>All Technologies & Tools</span>
                 </h3>
                 <div className="flex flex-wrap gap-1.5">
                   {analyzedJob.technologies.map((tech, i) => (
                     <span
                       key={i}
-                      className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700 text-xs font-mono"
+                      className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-200 text-xs font-mono"
                     >
                       {tech}
                     </span>
                   ))}
                 </div>
-              </div>
+              </Card>
             </div>
           </div>
 
           {/* Granular Requirements Breakdown & Evidence Grounding */}
-          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 sm:p-8 backdrop-blur-xl shadow-xl">
-            <div className="flex items-center justify-between mb-4">
+          <Card className="p-6 sm:p-8 space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
-                <h3 className="font-bold text-base text-white flex items-center space-x-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <h3 className="font-bold text-base text-slate-900 flex items-center space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   <span>Verified Factual Grounding (Anti-Hallucination Audit)</span>
                 </h3>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   Each extracted item is mapped directly to its supporting quote in the source job description.
                 </p>
               </div>
-              <span className="text-xs font-mono text-slate-400">
+              <span className="text-xs font-mono text-slate-500">
                 {analyzedJob.requirements.length} itemized facts
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {analyzedJob.requirements.map((req, i) => (
                 <div
                   key={i}
-                  className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 flex flex-col justify-between hover:border-slate-700 transition-colors"
+                  className="p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 flex flex-col justify-between space-y-2 hover:border-slate-300 transition-colors"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold text-sm text-white">{req.name}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-xs text-slate-900">{req.name}</span>
                     <span
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
                         req.requirement_type === "required"
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                           : req.requirement_type === "preferred"
-                          ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
-                          : "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                          ? "bg-sky-50 text-sky-700 border border-sky-200"
+                          : "bg-slate-100 text-slate-700 border border-slate-200"
                       }`}
                     >
                       {req.requirement_type}
                     </span>
                   </div>
                   {req.context && (
-                    <p className="text-xs text-slate-400 font-mono italic line-clamp-2 mt-1 bg-slate-900/40 p-2 rounded border border-slate-800/40">
+                    <p className="text-xs text-slate-600 font-mono italic line-clamp-2 mt-1 bg-white p-2.5 rounded-lg border border-slate-200/60">
                       "{req.context}"
                     </p>
                   )}
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

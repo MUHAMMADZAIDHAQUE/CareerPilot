@@ -902,6 +902,87 @@ export async function fetchLatestTailoredResumeApi(
   }
 }
 
+export interface ResumeDocument {
+  id: string;
+  candidate_id?: string | null;
+  filename: string;
+  file_type: string;
+  storage_path: string;
+  extracted_text: string;
+  version: number;
+  created_at: string;
+  metadata_json?: Record<string, any>;
+}
+
+export async function fetchResumeDocumentsApi(
+  candidateId?: string
+): Promise<ApiFetchResult<ResumeDocument[]>> {
+  const startTime = performance.now();
+  try {
+    const url = candidateId
+      ? `${BASE_HOST}/api/resume/documents?candidate_id=${encodeURIComponent(candidateId)}`
+      : `${BASE_HOST}/api/resume/documents`;
+    const res = await fetch(url, { cache: "no-store" });
+    const latencyMs = Math.round(performance.now() - startTime);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: ResumeDocument[] = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to fetch resume documents", latencyMs };
+  }
+}
+
+export async function fetchResumeVersionsApi(params?: {
+  candidateId?: string;
+  jobId?: string;
+  limit?: number;
+}): Promise<ApiFetchResult<ResumeVersion[]>> {
+  const startTime = performance.now();
+  try {
+    const query = new URLSearchParams();
+    if (params?.candidateId) query.append("candidate_id", params.candidateId);
+    if (params?.jobId) query.append("job_id", params.jobId);
+    if (params?.limit) query.append("limit", params.limit.toString());
+    const queryString = query.toString() ? `?${query.toString()}` : "";
+    const res = await fetch(`${BASE_HOST}/api/resumes/versions${queryString}`, { cache: "no-store" });
+    const latencyMs = Math.round(performance.now() - startTime);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: ResumeVersion[] = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to fetch resume versions", latencyMs };
+  }
+}
+
+export async function fetchResumeVersionApi(
+  versionId: string
+): Promise<ApiFetchResult<ResumeVersion>> {
+  const startTime = performance.now();
+  try {
+    const res = await fetch(`${BASE_HOST}/api/resumes/versions/${encodeURIComponent(versionId)}`, {
+      cache: "no-store",
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data: ResumeVersion = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return { data: null, error: err?.message || "Failed to fetch resume version", latencyMs };
+  }
+}
+
 // -----------------------------------------------------------------------------
 // Phase 7: LaTeX Compilation & PDF Types & APIs
 // -----------------------------------------------------------------------------
@@ -1226,6 +1307,7 @@ export interface OutreachMessage {
   relationship_context?: string | null;
   project_highlight?: string | null;
   metadata_json?: Record<string, any>;
+  tailoring_points?: string[];
   approved_at?: string | null;
   sent_at?: string | null;
   created_at: string;

@@ -193,6 +193,25 @@ async def get_latest_tailored_resume(
 
 
 @router.get(
+    "/versions",
+    response_model=List[ResumeVersionRead],
+    summary="List Tailored Resume Versions",
+)
+async def list_tailored_resume_versions(
+    candidate_id: Optional[str] = Query(None),
+    job_id: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> List[ResumeVersionRead]:
+    return await ResumeTailorService.list_versions(
+        session=db,
+        candidate_id=candidate_id,
+        job_id=job_id,
+        limit=limit,
+    )
+
+
+@router.get(
     "/versions/{version_id}",
     response_model=ResumeVersionRead,
     summary="Get Specific Tailored Resume Version by ID",
@@ -249,6 +268,25 @@ async def get_latest_tailored_resume_alias(
 from fastapi.responses import FileResponse
 from backend.app.schemas.compilation import CompilePDFRequest, CompiledPDFResponse
 from backend.app.services.latex_compiler_service import LaTeXCompilerService
+
+
+@resumes_router.get(
+    "/versions",
+    response_model=List[ResumeVersionRead],
+    summary="List Tailored Resume Versions (Alias)",
+)
+async def list_tailored_resume_versions_alias(
+    candidate_id: Optional[str] = Query(None),
+    job_id: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> List[ResumeVersionRead]:
+    return await list_tailored_resume_versions(
+        candidate_id=candidate_id,
+        job_id=job_id,
+        limit=limit,
+        db=db,
+    )
 
 
 @resumes_router.get(

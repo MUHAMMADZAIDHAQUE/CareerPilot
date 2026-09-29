@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, UploadCloud, Sparkles, CheckCircle2, AlertCircle, FileCode } from "lucide-react";
+import { X, UploadCloud, Sparkles, AlertCircle } from "lucide-react";
 import { importStructuredResumeApi, Candidate } from "@/lib/api";
+import Button from "@/components/ui/Button";
 
 interface StructuredImportModalProps {
   isOpen: boolean;
@@ -164,39 +165,39 @@ export default function StructuredImportModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-surface-50 border border-slate-700/80 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white border border-slate-200/80 rounded-2xl w-full max-w-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
           <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-lg bg-brand-500/10 border border-brand-500/20 text-brand-400">
+            <div className="p-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-800">
               <UploadCloud className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-lg text-white">Import Structured Resume JSON</h3>
-              <p className="text-xs text-slate-400">
+              <h3 className="font-bold text-base text-slate-900">Import Structured Resume JSON</h3>
+              <p className="text-xs text-slate-500">
                 Populate complete profile: experiences, skills, education, projects & preferences.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Modal Body */}
         <div className="p-6 space-y-4 overflow-y-auto flex-1">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-300">Resume JSON Payload</span>
+            <span className="text-xs font-semibold text-slate-700">Resume JSON Payload</span>
             <button
               type="button"
               onClick={handleLoadSample}
-              className="inline-flex items-center space-x-1 text-xs font-semibold text-brand-400 hover:text-brand-300 bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/20 px-2.5 py-1 rounded-md transition-colors"
+              className="inline-flex items-center space-x-1 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 border border-slate-200 px-2.5 py-1 rounded-lg transition-colors"
             >
-              <Sparkles className="w-3.5 h-3.5" />
+              <Sparkles className="w-3.5 h-3.5 mr-1 text-slate-600" />
               <span>Load Full Sample Resume</span>
             </button>
           </div>
@@ -206,11 +207,11 @@ export default function StructuredImportModal({
             value={jsonText}
             onChange={(e) => setJsonText(e.target.value)}
             placeholder="Paste your JSON structured resume here..."
-            className="w-full bg-slate-950 font-mono text-xs text-slate-200 border border-slate-800 rounded-xl p-3.5 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 resize-none"
+            className="w-full bg-slate-50 font-mono text-xs text-slate-800 border border-slate-200 rounded-xl p-3.5 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 resize-none leading-relaxed"
           />
 
           {error && (
-            <div className="flex items-start space-x-2 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
+            <div className="flex items-start space-x-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <span>{error}</span>
             </div>
@@ -218,29 +219,26 @@ export default function StructuredImportModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-800 bg-slate-900/50">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-          >
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+          <Button type="button" onClick={onClose} variant="ghost" size="sm">
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={handleSubmit}
             disabled={isLoading}
-            className="inline-flex items-center space-x-2 px-5 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-lg shadow-brand-500/20 disabled:opacity-50 transition-all"
+            variant="primary"
+            size="sm"
           >
             {isLoading ? (
               <span>Importing Profile...</span>
             ) : (
               <>
-                <UploadCloud className="w-4 h-4" />
+                <UploadCloud className="w-4 h-4 mr-1.5" />
                 <span>Import Profile</span>
               </>
             )}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

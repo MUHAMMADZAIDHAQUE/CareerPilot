@@ -7,15 +7,13 @@ import {
   FileText,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
   ShieldCheck,
   FileCode,
-  Briefcase,
-  GraduationCap,
-  Award,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
 import { uploadResumeFile, confirmResumeImport, ResumeUploadResult, Candidate } from "@/lib/api";
+import { Button } from "./ui/Button";
 
 interface ResumeUploadModalProps {
   isOpen: boolean;
@@ -98,6 +96,7 @@ export default function ResumeUploadModal({
       setError(res.error);
     } else if (res.data) {
       onSuccess(res.data);
+      resetModal();
       onClose();
     }
   };
@@ -109,22 +108,22 @@ export default function ResumeUploadModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-surface-50 border border-slate-700 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-3xl shadow-elevated overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/60">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-400">
+            <div className="p-2 rounded-lg bg-slate-100 text-slate-800">
               <Upload className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-lg text-white">
-                {uploadResult ? "Review & Confirm Extracted Resume" : "Upload Resume"}
+              <h3 className="font-semibold text-base text-slate-900 tracking-tight">
+                {uploadResult ? "Review Extracted Facts" : "Upload Master Resume"}
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 mt-0.5">
                 {uploadResult
-                  ? "Verify extracted facts before applying changes to your permanent profile."
-                  : "Supports PDF (.pdf), LaTeX (.tex), and Plain Text (.txt, .md)."}
+                  ? "Verify extracted skills and experiences before updating your profile."
+                  : "Supports PDF (.pdf), LaTeX (.tex), and Markdown/Text (.txt, .md)."}
               </p>
             </div>
           </div>
@@ -133,7 +132,7 @@ export default function ResumeUploadModal({
               resetModal();
               onClose();
             }}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -151,8 +150,8 @@ export default function ResumeUploadModal({
                 onClick={() => fileInputRef.current?.click()}
                 className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all ${
                   isDragging
-                    ? "border-brand-400 bg-brand-500/10"
-                    : "border-slate-700 hover:border-slate-600 bg-slate-900/40"
+                    ? "border-slate-900 bg-slate-50"
+                    : "border-slate-300 hover:border-slate-400 bg-slate-50/50"
                 }`}
               >
                 <input
@@ -163,94 +162,94 @@ export default function ResumeUploadModal({
                   className="hidden"
                 />
 
-                <div className="w-14 h-14 rounded-2xl bg-slate-800 text-brand-400 mx-auto flex items-center justify-center mb-4 shadow-lg shadow-brand-500/10">
-                  <FileText className="w-7 h-7" />
+                <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 text-slate-700 mx-auto flex items-center justify-center mb-3 shadow-subtle">
+                  <FileText className="w-6 h-6" />
                 </div>
 
-                <h4 className="text-base font-bold text-white mb-1">
+                <h4 className="text-sm font-semibold text-slate-900 mb-1">
                   {file ? file.name : "Drag & drop your resume file here"}
                 </h4>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
                   {file
-                    ? `${(file.size / 1024).toFixed(1)} KB • Click to change file`
-                    : "Supports PDF, LaTeX (.tex master), and Markdown/Plain text up to 10MB."}
+                    ? `${(file.size / 1024).toFixed(1)} KB • Click to choose a different file`
+                    : "PDF, LaTeX (.tex master), Markdown or Plain Text up to 10MB."}
                 </p>
               </div>
 
               {/* Supported Formats Banner */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center space-x-3">
-                  <FileText className="w-5 h-5 text-rose-400 flex-shrink-0" />
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center space-x-3">
+                  <FileText className="w-4 h-4 text-slate-600 shrink-0" />
                   <div className="text-xs">
-                    <p className="font-semibold text-slate-200">PDF Resumes</p>
-                    <p className="text-slate-400">Extracted with PyPDF</p>
+                    <p className="font-semibold text-slate-900">PDF Resumes</p>
+                    <p className="text-slate-500">Parsed via PyPDF</p>
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center space-x-3">
-                  <FileCode className="w-5 h-5 text-accent-cyan flex-shrink-0" />
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center space-x-3">
+                  <FileCode className="w-4 h-4 text-slate-600 shrink-0" />
                   <div className="text-xs">
-                    <p className="font-semibold text-slate-200">LaTeX (.tex)</p>
-                    <p className="text-slate-400">Pristine master preserved</p>
+                    <p className="font-semibold text-slate-900">LaTeX (.tex)</p>
+                    <p className="text-slate-500">Master template kept</p>
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center space-x-3">
-                  <ShieldCheck className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center space-x-3">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                   <div className="text-xs">
-                    <p className="font-semibold text-slate-200">Zero Hallucination</p>
-                    <p className="text-slate-400">Exact fact extraction</p>
+                    <p className="font-semibold text-slate-900">Non-Fabricating</p>
+                    <p className="text-slate-500">Zero hallucinations</p>
                   </div>
                 </div>
               </div>
 
               {error && (
-                <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center space-x-2">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{error}</span>
                 </div>
               )}
             </div>
           ) : (
             /* Review & Human Confirmation Step */
-            <div className="space-y-6">
+            <div className="space-y-5">
               {/* Extraction Banner */}
-              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center justify-between">
+              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>
                     Successfully parsed <strong>{uploadResult.filename}</strong> ({uploadResult.file_type.toUpperCase()})
                   </span>
                 </div>
                 {uploadResult.is_latex && (
-                  <span className="px-2 py-0.5 rounded bg-brand-500/20 text-brand-300 font-mono text-[10px]">
+                  <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-semibold">
                     Master LaTeX Cached
                   </span>
                 )}
               </div>
 
               {/* Side-by-side Review */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Left: Candidate Summary & Skills */}
                 <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
-                    <h4 className="font-bold text-xs text-white uppercase tracking-wider text-brand-400">
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                    <h4 className="font-semibold text-xs text-slate-500 uppercase tracking-wider">
                       Personal Information
                     </h4>
                     <div className="text-xs space-y-1">
-                      <p className="text-base font-bold text-white">
+                      <p className="text-sm font-semibold text-slate-900">
                         {uploadResult.structured_candidate_data.full_name}
                       </p>
-                      <p className="text-slate-300">
+                      <p className="text-slate-600">
                         {uploadResult.structured_candidate_data.email}
                       </p>
                       {uploadResult.structured_candidate_data.location && (
-                        <p className="text-slate-400">
+                        <p className="text-slate-500">
                           {uploadResult.structured_candidate_data.location}
                         </p>
                       )}
                       {uploadResult.structured_candidate_data.headline && (
-                        <p className="text-slate-400 italic">
+                        <p className="text-slate-500 italic">
                           &quot;{uploadResult.structured_candidate_data.headline}&quot;
                         </p>
                       )}
@@ -258,15 +257,15 @@ export default function ResumeUploadModal({
                   </div>
 
                   {/* Extracted Skills */}
-                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
-                    <h4 className="font-bold text-xs text-white uppercase tracking-wider text-emerald-400 flex items-center justify-between">
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                    <h4 className="font-semibold text-xs text-slate-500 uppercase tracking-wider flex items-center justify-between">
                       <span>Extracted Skills ({uploadResult.structured_candidate_data.skills.length})</span>
                     </h4>
-                    <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
+                    <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
                       {uploadResult.structured_candidate_data.skills.map((s, idx) => (
                         <span
                           key={idx}
-                          className="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-900 text-brand-300 border border-slate-800"
+                          className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-white text-slate-700 border border-slate-200"
                         >
                           {s.name}
                         </span>
@@ -277,29 +276,29 @@ export default function ResumeUploadModal({
 
                 {/* Right: Work Experience & Education Preview */}
                 <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
-                    <h4 className="font-bold text-xs text-white uppercase tracking-wider text-accent-cyan flex items-center justify-between">
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                    <h4 className="font-semibold text-xs text-slate-500 uppercase tracking-wider flex items-center justify-between">
                       <span>Work History ({uploadResult.structured_candidate_data.experience.length})</span>
                     </h4>
-                    <div className="space-y-3 max-h-40 overflow-y-auto">
+                    <div className="space-y-2.5 max-h-36 overflow-y-auto">
                       {uploadResult.structured_candidate_data.experience.map((exp, idx) => (
-                        <div key={idx} className="text-xs border-b border-slate-900 pb-2 last:border-b-0">
-                          <p className="font-semibold text-white">{exp.role}</p>
-                          <p className="text-brand-400">{exp.company} • {exp.start_date}</p>
+                        <div key={idx} className="text-xs border-b border-slate-200/60 pb-2 last:border-b-0">
+                          <p className="font-semibold text-slate-900">{exp.role}</p>
+                          <p className="text-slate-500">{exp.company} • {exp.start_date}</p>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
-                    <h4 className="font-bold text-xs text-white uppercase tracking-wider text-amber-400">
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                    <h4 className="font-semibold text-xs text-slate-500 uppercase tracking-wider">
                       Education ({uploadResult.structured_candidate_data.education.length})
                     </h4>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       {uploadResult.structured_candidate_data.education.map((edu, idx) => (
                         <div key={idx} className="text-xs">
-                          <p className="font-semibold text-white">{edu.institution}</p>
-                          <p className="text-slate-400">{edu.degree}</p>
+                          <p className="font-semibold text-slate-900">{edu.institution}</p>
+                          <p className="text-slate-500">{edu.degree}</p>
                         </div>
                       ))}
                     </div>
@@ -308,8 +307,8 @@ export default function ResumeUploadModal({
               </div>
 
               {error && (
-                <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center space-x-2">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{error}</span>
                 </div>
               )}
@@ -318,56 +317,45 @@ export default function ResumeUploadModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-800 bg-slate-900/60">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
           {!uploadResult ? (
             <>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white"
               >
                 Cancel
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={handleUploadAndExtract}
-                disabled={!file || isUploading}
-                className="inline-flex items-center space-x-2 px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-lg shadow-brand-500/20 disabled:opacity-50 transition-all"
+                disabled={!file}
+                loading={isUploading}
+                icon={<Upload className="w-4 h-4" />}
               >
-                {isUploading ? (
-                  <span>Extracting Content...</span>
-                ) : (
-                  <>
-                    <Upload className="w-4 h-4" />
-                    <span>Upload & Extract</span>
-                  </>
-                )}
-              </button>
+                Upload & Extract
+              </Button>
             </>
           ) : (
             <>
-              <button
-                type="button"
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={resetModal}
-                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white"
               >
                 Upload Different File
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={handleConfirm}
-                disabled={isConfirming}
-                className="inline-flex items-center space-x-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-xs font-bold shadow-lg shadow-emerald-500/20 disabled:opacity-50 transition-all"
+                loading={isConfirming}
+                icon={<CheckCircle2 className="w-4 h-4" />}
               >
-                {isConfirming ? (
-                  <span>Applying to Profile...</span>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Confirm & Update Profile</span>
-                  </>
-                )}
-              </button>
+                Confirm & Update Profile
+              </Button>
             </>
           )}
         </div>

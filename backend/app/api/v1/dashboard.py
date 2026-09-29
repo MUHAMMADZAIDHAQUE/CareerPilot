@@ -11,6 +11,7 @@ router = APIRouter(prefix="/dashboard", tags=["Main Dashboard"])
 
 @router.get("", response_model=DashboardSummaryResponse)
 @router.get("/", response_model=DashboardSummaryResponse)
+@router.get("/summary", response_model=DashboardSummaryResponse)
 async def get_dashboard_summary(
     candidate_id: Optional[str] = Query(None, description="Optional candidate ID"),
     db: AsyncSession = Depends(get_db),

@@ -318,3 +318,22 @@ class ResumeTailorService:
         if record:
             return ResumeVersionRead.model_validate(record)
         return None
+
+    @classmethod
+    async def list_versions(
+        cls,
+        session: AsyncSession,
+        candidate_id: Optional[str] = None,
+        job_id: Optional[str] = None,
+        limit: int = 50,
+    ) -> List[ResumeVersionRead]:
+        """Lists tailored resume versions ordered by creation date descending."""
+        stmt = select(ResumeVersion)
+        if candidate_id:
+            stmt = stmt.where(ResumeVersion.candidate_id == candidate_id)
+        if job_id:
+            stmt = stmt.where(ResumeVersion.job_id == job_id)
+        stmt = stmt.order_by(ResumeVersion.created_at.desc()).limit(limit)
+        res = await session.execute(stmt)
+        records = res.scalars().all()
+        return [ResumeVersionRead.model_validate(r) for r in records]
