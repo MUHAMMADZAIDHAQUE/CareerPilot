@@ -274,10 +274,14 @@ class InterviewService:
         session.add(first_turn)
         await session.commit()
 
-        # Re-fetch session with turns
+        # Re-fetch session with turns, job, and candidate
         stmt = (
             select(InterviewSession)
-            .options(selectinload(InterviewSession.turns))
+            .options(
+                selectinload(InterviewSession.turns),
+                selectinload(InterviewSession.job),
+                selectinload(InterviewSession.candidate),
+            )
             .where(InterviewSession.id == new_session.id)
         )
         res = await session.execute(stmt)
@@ -459,6 +463,7 @@ class InterviewService:
             .options(
                 selectinload(InterviewSession.turns),
                 selectinload(InterviewSession.job),
+                selectinload(InterviewSession.candidate),
             )
             .where(InterviewSession.id == session_id)
         )
@@ -538,6 +543,7 @@ class InterviewService:
             .options(
                 selectinload(InterviewSession.turns),
                 selectinload(InterviewSession.job),
+                selectinload(InterviewSession.candidate),
             )
             .where(InterviewSession.id == session_id)
         )
@@ -560,6 +566,7 @@ class InterviewService:
             .options(
                 selectinload(InterviewSession.turns),
                 selectinload(InterviewSession.job),
+                selectinload(InterviewSession.candidate),
             )
             .order_by(InterviewSession.created_at.desc())
             .limit(limit)

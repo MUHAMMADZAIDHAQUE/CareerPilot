@@ -62,8 +62,13 @@ def _serialize_session(s) -> InterviewSessionResponse:
         else None
     )
 
-    company_name = getattr(s.job, "company", None) if hasattr(s, "job") and s.job else s.metadata_json.get("company_name")
-    role = getattr(s.job, "role", None) if hasattr(s, "job") and s.job else s.metadata_json.get("role")
+    meta = s.metadata_json or {}
+    company_name = meta.get("company_name")
+    role = meta.get("role")
+    if not company_name and "job" in s.__dict__ and s.job:
+        company_name = getattr(s.job, "company", None)
+    if not role and "job" in s.__dict__ and s.job:
+        role = getattr(s.job, "role", None)
 
     return InterviewSessionResponse(
         id=s.id,
