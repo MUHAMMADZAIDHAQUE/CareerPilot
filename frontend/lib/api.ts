@@ -4314,10 +4314,91 @@ export interface AdminDashboardKPI {
   total_candidates: number;
   total_jobs: number;
   total_applications: number;
+  total_resumes: number;
+  total_tailored_resumes: number;
+  total_referrals: number;
+  total_interviews: number;
   total_outreach_drafts: number;
   n8n_connected: boolean;
   system_status: string;
   environment: string;
+}
+
+export interface AdminCandidateItem {
+  id: string;
+  user_id?: string | null;
+  full_name: string;
+  email: string;
+  headline?: string | null;
+  location?: string | null;
+  created_at?: string | null;
+  applications_count: number;
+  resumes_count: number;
+}
+
+export interface AdminJobItem {
+  id: string;
+  title: string;
+  company: string;
+  location?: string | null;
+  source?: string | null;
+  url?: string | null;
+  created_at?: string | null;
+  applications_count: number;
+}
+
+export interface AdminApplicationItem {
+  id: string;
+  candidate_id?: string | null;
+  candidate_name?: string | null;
+  candidate_email?: string | null;
+  job_id: string;
+  job_title?: string | null;
+  company?: string | null;
+  status: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface AdminResumeItem {
+  id: string;
+  candidate_id: string;
+  candidate_name?: string | null;
+  candidate_email?: string | null;
+  filename: string;
+  content_type: string;
+  is_latex: boolean;
+  master_template_saved: boolean;
+  created_at?: string | null;
+  versions_count: number;
+}
+
+export interface AdminReferralItem {
+  id: string;
+  candidate_id?: string | null;
+  job_id?: string | null;
+  job_title?: string | null;
+  company?: string | null;
+  contact_name: string;
+  contact_role?: string | null;
+  channel: string;
+  status: string;
+  risk_level?: string | null;
+  created_at?: string | null;
+}
+
+export interface AdminInterviewItem {
+  id: string;
+  candidate_id?: string | null;
+  candidate_name?: string | null;
+  candidate_email?: string | null;
+  job_id: string;
+  job_title?: string | null;
+  company?: string | null;
+  status: string;
+  turns_count: number;
+  overall_score?: number | null;
+  created_at?: string | null;
 }
 
 export interface AuditLogEvent {
@@ -4488,6 +4569,160 @@ export async function fetchAdminAuditLogs(): Promise<ApiFetchResult<AuditLogEven
     return { data, error: null, latencyMs };
   } catch (err: any) {
     return { data: null, error: err?.message || "Failed to fetch audit logs", latencyMs: 0 };
+  }
+}
+
+export async function fetchAdminCandidates(
+  search?: string,
+  limit: number = 50,
+  offset: number = 0
+): Promise<ApiFetchResult<AdminCandidateItem[]>> {
+  const startTime = performance.now();
+  try {
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    params.set("limit", String(limit));
+    params.set("offset", String(offset));
+    const res = await fetch(`${BASE_HOST}/api/v1/admin/candidates?${params.toString()}`, {
+      headers: getAuthHeaders(),
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    return { data: null, error: err?.message || "Failed to fetch candidates", latencyMs: 0 };
+  }
+}
+
+export async function fetchAdminJobs(
+  search?: string,
+  source?: string,
+  limit: number = 50,
+  offset: number = 0
+): Promise<ApiFetchResult<AdminJobItem[]>> {
+  const startTime = performance.now();
+  try {
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (source) params.set("source", source);
+    params.set("limit", String(limit));
+    params.set("offset", String(offset));
+    const res = await fetch(`${BASE_HOST}/api/v1/admin/jobs?${params.toString()}`, {
+      headers: getAuthHeaders(),
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    return { data: null, error: err?.message || "Failed to fetch jobs", latencyMs: 0 };
+  }
+}
+
+export async function fetchAdminApplications(
+  status?: string,
+  limit: number = 50,
+  offset: number = 0
+): Promise<ApiFetchResult<AdminApplicationItem[]>> {
+  const startTime = performance.now();
+  try {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    params.set("limit", String(limit));
+    params.set("offset", String(offset));
+    const res = await fetch(`${BASE_HOST}/api/v1/admin/applications?${params.toString()}`, {
+      headers: getAuthHeaders(),
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    return { data: null, error: err?.message || "Failed to fetch applications", latencyMs: 0 };
+  }
+}
+
+export async function fetchAdminResumes(
+  limit: number = 50,
+  offset: number = 0
+): Promise<ApiFetchResult<AdminResumeItem[]>> {
+  const startTime = performance.now();
+  try {
+    const params = new URLSearchParams();
+    params.set("limit", String(limit));
+    params.set("offset", String(offset));
+    const res = await fetch(`${BASE_HOST}/api/v1/admin/resumes?${params.toString()}`, {
+      headers: getAuthHeaders(),
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    return { data: null, error: err?.message || "Failed to fetch resumes", latencyMs: 0 };
+  }
+}
+
+export async function fetchAdminReferrals(
+  status?: string,
+  limit: number = 50,
+  offset: number = 0
+): Promise<ApiFetchResult<AdminReferralItem[]>> {
+  const startTime = performance.now();
+  try {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    params.set("limit", String(limit));
+    params.set("offset", String(offset));
+    const res = await fetch(`${BASE_HOST}/api/v1/admin/referrals?${params.toString()}`, {
+      headers: getAuthHeaders(),
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    return { data: null, error: err?.message || "Failed to fetch referrals", latencyMs: 0 };
+  }
+}
+
+export async function fetchAdminInterviews(
+  limit: number = 50,
+  offset: number = 0
+): Promise<ApiFetchResult<AdminInterviewItem[]>> {
+  const startTime = performance.now();
+  try {
+    const params = new URLSearchParams();
+    params.set("limit", String(limit));
+    params.set("offset", String(offset));
+    const res = await fetch(`${BASE_HOST}/api/v1/admin/interviews?${params.toString()}`, {
+      headers: getAuthHeaders(),
+    });
+    const latencyMs = Math.round(performance.now() - startTime);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { data: null, error: err.detail || `Status ${res.status}`, latencyMs };
+    }
+    const data = await res.json();
+    return { data, error: null, latencyMs };
+  } catch (err: any) {
+    return { data: null, error: err?.message || "Failed to fetch interviews", latencyMs: 0 };
   }
 }
 

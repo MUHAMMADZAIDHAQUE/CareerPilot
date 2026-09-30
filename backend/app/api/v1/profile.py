@@ -45,6 +45,20 @@ async def create_profile(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create profile.")
 
 
+def resolve_candidate_id_securely(
+    candidate_id: Optional[str],
+    current_user: Optional[User],
+) -> Optional[str]:
+    if current_user and current_user.candidate:
+        if candidate_id and candidate_id != current_user.candidate.id and getattr(current_user, "role", None) != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: Cannot access or modify another candidate's profile."
+            )
+        return current_user.candidate.id
+    return candidate_id
+
+
 @router.get(
     "",
     response_model=CandidateRead,
@@ -52,13 +66,11 @@ async def create_profile(
     description="Retrieves the current candidate profile with all related entities (skills, experiences, education, projects, certifications, achievements, and career preferences).",
 )
 async def get_profile(
-    candidate_id: Optional[str] = Query(None, description="Optional Candidate ID. If omitted, returns first candidate profile."),
+    candidate_id: Optional[str] = Query(None, description="Optional Candidate ID. If omitted, returns authenticated candidate profile."),
     db: AsyncSession = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> CandidateRead:
-    resolved_candidate_id = candidate_id
-    if not resolved_candidate_id and current_user and current_user.candidate:
-        resolved_candidate_id = current_user.candidate.id
+    resolved_candidate_id = resolve_candidate_id_securely(candidate_id, current_user)
 
     candidate = await ProfileService.get_candidate(db, resolved_candidate_id)
     if not candidate:
@@ -77,11 +89,13 @@ async def get_profile(
 )
 async def update_profile(
     candidate_update: CandidateUpdate,
-    candidate_id: Optional[str] = Query(None, description="Candidate ID to update. If omitted, updates default candidate."),
+    candidate_id: Optional[str] = Query(None, description="Candidate ID to update. If omitted, updates authenticated candidate."),
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> CandidateRead:
-    # Resolve target candidate
-    candidate = await ProfileService.get_candidate(db, candidate_id)
+    resolved_candidate_id = resolve_candidate_id_securely(candidate_id, current_user)
+
+    candidate = await ProfileService.get_candidate(db, resolved_candidate_id)
     if not candidate:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -101,10 +115,12 @@ async def update_profile(
 )
 async def add_skill(
     skill_in: SkillCreate,
-    candidate_id: Optional[str] = Query(None, description="Candidate ID. If omitted, uses default candidate."),
+    candidate_id: Optional[str] = Query(None, description="Candidate ID. If omitted, uses authenticated candidate."),
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> SkillRead:
-    candidate = await ProfileService.get_candidate(db, candidate_id)
+    resolved_candidate_id = resolve_candidate_id_securely(candidate_id, current_user)
+    candidate = await ProfileService.get_candidate(db, resolved_candidate_id)
     if not candidate:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate profile not found.")
 
@@ -121,10 +137,12 @@ async def add_skill(
 )
 async def add_project(
     project_in: ProjectCreate,
-    candidate_id: Optional[str] = Query(None, description="Candidate ID. If omitted, uses default candidate."),
+    candidate_id: Optional[str] = Query(None, description="Candidate ID. If omitted, uses authenticated candidate."),
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> ProjectRead:
-    candidate = await ProfileService.get_candidate(db, candidate_id)
+    resolved_candidate_id = resolve_candidate_id_securely(candidate_id, current_user)
+    candidate = await ProfileService.get_candidate(db, resolved_candidate_id)
     if not candidate:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate profile not found.")
 
@@ -141,10 +159,12 @@ async def add_project(
 )
 async def add_experience(
     experience_in: ExperienceCreate,
-    candidate_id: Optional[str] = Query(None, description="Candidate ID. If omitted, uses default candidate."),
+    candidate_id: Optional[str] = Query(None, description="Candidate ID. If omitted, uses authenticated candidate."),
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> ExperienceRead:
-    candidate = await ProfileService.get_candidate(db, candidate_id)
+    resolved_candidate_id = resolve_candidate_id_securely(candidate_id, current_user)
+    candidate = await ProfileService.get_candidate(db, resolved_candidate_id)
     if not candidate:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate profile not found.")
 
@@ -161,10 +181,12 @@ async def add_experience(
 )
 async def add_education(
     education_in: EducationCreate,
-    candidate_id: Optional[str] = Query(None, description="Candidate ID. If omitted, uses default candidate."),
+    candidate_id: Optional[str] = Query(None, description="Candidate ID. If omitted, uses authenticated candidate."),
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> EducationRead:
-    candidate = await ProfileService.get_candidate(db, candidate_id)
+    resolved_candidate_id = resolve_candidate_id_securely(candidate_id, current_user)
+    candidate = await ProfileService.get_candidate(db, resolved_candidate_id)
     if not candidate:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate profile not found.")
 

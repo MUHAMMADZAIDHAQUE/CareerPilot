@@ -217,7 +217,11 @@ export default function JobDiscoveryPortalPage() {
   };
 
   const handleEnqueueJob = async (job: Job) => {
-    const candId = candidate?.id || getCurrentCandidateId() || "demo-candidate";
+    const candId = candidate?.id || getCurrentCandidateId();
+    if (!candId) {
+      alert("Please sign in to add jobs to your application pipeline.");
+      return;
+    }
     const res = await enqueueJobToQueue(candId, job.id, "HIGH", `Staged from job search`);
     if (!res.error) {
       setQueuedJobIds((prev) => new Set([...prev, job.id]));

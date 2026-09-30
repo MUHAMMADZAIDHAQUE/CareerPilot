@@ -67,6 +67,20 @@ async def test_admin_rbac_isolation(async_client: AsyncClient):
     )
     assert cand_admin_resp.status_code == 403
 
+    # Candidate attempts to access Admin Candidates -> 403 Forbidden
+    cand_cands_resp = await async_client.get(
+        "/api/v1/admin/candidates",
+        headers={"Authorization": f"Bearer {cand_token}"}
+    )
+    assert cand_cands_resp.status_code == 403
+
+    # Candidate attempts to access Admin Jobs -> 403 Forbidden
+    cand_jobs_resp = await async_client.get(
+        "/api/v1/admin/jobs",
+        headers={"Authorization": f"Bearer {cand_token}"}
+    )
+    assert cand_jobs_resp.status_code == 403
+
     # 2. Login as Admin
     admin_login = await async_client.post(
         "/api/v1/auth/login",
@@ -84,6 +98,8 @@ async def test_admin_rbac_isolation(async_client: AsyncClient):
     dash_data = admin_dash_resp.json()
     assert "total_users" in dash_data
     assert "system_status" in dash_data
+    assert "total_resumes" in dash_data
+    assert "total_candidates" in dash_data
 
     # Admin lists users
     users_resp = await async_client.get(
@@ -93,6 +109,62 @@ async def test_admin_rbac_isolation(async_client: AsyncClient):
     assert users_resp.status_code == 200
     users = users_resp.json()
     assert len(users) >= 2
+
+    # Admin lists candidates
+    cands_resp = await async_client.get(
+        "/api/v1/admin/candidates",
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert cands_resp.status_code == 200
+    assert isinstance(cands_resp.json(), list)
+
+    # Admin lists jobs
+    jobs_resp = await async_client.get(
+        "/api/v1/admin/jobs",
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert jobs_resp.status_code == 200
+    assert isinstance(jobs_resp.json(), list)
+
+    # Admin lists applications
+    apps_resp = await async_client.get(
+        "/api/v1/admin/applications",
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert apps_resp.status_code == 200
+    assert isinstance(apps_resp.json(), list)
+
+    # Admin lists resumes
+    res_resp = await async_client.get(
+        "/api/v1/admin/resumes",
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert res_resp.status_code == 200
+    assert isinstance(res_resp.json(), list)
+
+    # Admin lists referrals
+    ref_resp = await async_client.get(
+        "/api/v1/admin/referrals",
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert ref_resp.status_code == 200
+    assert isinstance(ref_resp.json(), list)
+
+    # Admin lists interviews
+    int_resp = await async_client.get(
+        "/api/v1/admin/interviews",
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert int_resp.status_code == 200
+    assert isinstance(int_resp.json(), list)
+
+    # Admin checks system health
+    sys_resp = await async_client.get(
+        "/api/v1/admin/system-health",
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert sys_resp.status_code == 200
+    assert "database" in sys_resp.json()
 
 
 @pytest.mark.asyncio

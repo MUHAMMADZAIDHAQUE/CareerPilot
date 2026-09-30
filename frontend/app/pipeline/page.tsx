@@ -75,7 +75,13 @@ export default function PipelineQueuePage() {
         }
       }
 
-      const candId = cand?.id || getCurrentCandidateId() || "demo-candidate";
+      const candId = cand?.id || getCurrentCandidateId();
+      if (!candId) {
+        setError("Please sign in to view your application pipeline queue.");
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
 
       const [queueRes, statsRes] = await Promise.all([
         fetchApplicationQueue(candId),
