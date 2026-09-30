@@ -63,7 +63,7 @@ The Admin area is hosted at `/admin` (`frontend/app/admin/page.tsx`) and is comp
    - **Referrals & Outreach**: Discovered contacts, generated AI drafts, and risk analysis.
    - **Mock Interviews**: Interactive interview sessions, question turns, and evaluated scores.
    - **System Health**: FastAPI, Supabase PostgreSQL, pgvector, and n8n status.
-   - **100+ ATS Pipeline**: Manual dispatcher for Greenhouse, Lever, and RSS boards.
+   - **Job Sources Pipeline**: Manual dispatcher for Greenhouse, Lever, and RSS boards.
    - **Security Audit Ledger**: Timestamped immutable log of governance actions.
 
 ---

@@ -182,7 +182,7 @@ export default function PipelineQueuePage() {
                 Application Execution Queue
               </h1>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
-                High-throughput pipeline for staged jobs across 100+ verified Indian ATS boards.
+                High-throughput pipeline for staged jobs across verified Indian ATS boards.
                 Always enforces human confirmation before consequential submission.
               </p>
             </div>

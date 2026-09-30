@@ -77,8 +77,14 @@ async def get_admin_dashboard(
     total_interviews_q = await session.execute(select(func.count(InterviewSession.id)))
     total_interviews = total_interviews_q.scalar() or 0
 
-    # 8. n8n status
-    n8n_ok = N8nService.is_enabled()
+    # 8. n8n status - verify actual reachability, never assume active solely from config presence
+    n8n_ok = False
+    if N8nService.is_enabled():
+        try:
+            health = await N8nService.check_health()
+            n8n_ok = health.get("status") == "healthy"
+        except Exception:
+            n8n_ok = False
 
     return AdminDashboardKPI(
         total_users=total_users,

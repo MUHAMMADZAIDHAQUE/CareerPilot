@@ -415,7 +415,7 @@ export default function AdminPage() {
           { id: "referrals", label: `Referrals (${stats?.total_referrals ?? referrals.length})`, icon: Send },
           { id: "interviews", label: `Interviews (${stats?.total_interviews ?? interviews.length})`, icon: PhoneCall },
           { id: "health", label: "System Health", icon: Database },
-          { id: "ingestion", label: "100+ ATS Pipeline", icon: Globe },
+          { id: "ingestion", label: "Job Sources Pipeline", icon: Globe },
           { id: "logs", label: `Audit Ledger (${logs.length})`, icon: FileText },
         ].map((tab) => {
           const Icon = tab.icon;
@@ -1063,7 +1063,7 @@ export default function AdminPage() {
               <Activity className="w-5 h-5 text-emerald-500" />
               <span>Real-Time Production Health Status</span>
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
                 <div className="flex items-center justify-between text-xs text-slate-500">
                   <span>FastAPI Application Core</span>
@@ -1090,6 +1090,31 @@ export default function AdminPage() {
                 <div className="text-lg font-bold text-slate-900 dark:text-white">ENFORCED</div>
                 <div className="text-[11px] text-slate-400">HS256 | Strict IDOR Segregation</div>
               </div>
+
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span>n8n Workflow Engine</span>
+                  <span
+                    className={`w-2.5 h-2.5 rounded-full ${
+                      stats?.n8n_connected ? "bg-emerald-500" : "bg-slate-400 dark:bg-slate-600"
+                    }`}
+                  />
+                </div>
+                <div
+                  className={`text-lg font-bold ${
+                    stats?.n8n_connected
+                      ? "text-slate-900 dark:text-white"
+                      : "text-slate-500 dark:text-slate-400"
+                  }`}
+                >
+                  {stats?.n8n_connected ? "ACTIVE" : "NOT CONFIGURED"}
+                </div>
+                <div className="text-[11px] text-slate-400">
+                  {stats?.n8n_connected
+                    ? "Webhook Verified | HITL Governed"
+                    : "Unconfigured | Direct Execution Mode"}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1104,7 +1129,7 @@ export default function AdminPage() {
               <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                 {ingestionMetrics?.total_sources_configured ?? ingestionSources.length}
               </p>
-              <span className="text-[10px] text-slate-500">100+ Verified Catalog</span>
+              <span className="text-[10px] text-slate-500">Configured ATS Catalog</span>
             </div>
 
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -1156,7 +1181,7 @@ export default function AdminPage() {
                   <span>Manual Ingestion Dispatcher</span>
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Trigger an ingestion cycle on any of the 100+ registered ATS boards.
+                  Trigger an ingestion cycle on any of the configured ATS boards.
                 </p>
               </div>
             </div>
