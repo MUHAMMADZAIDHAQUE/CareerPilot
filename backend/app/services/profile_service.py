@@ -223,18 +223,23 @@ class ProfileService:
 
     @classmethod
     async def import_structured_resume(
-        cls, session: AsyncSession, data: StructuredResumeImport
+        cls, session: AsyncSession, data: StructuredResumeImport, candidate_id: Optional[str] = None
     ) -> Candidate:
         """
         Accepts structured resume data and converts/upserts it into the candidate profile.
         Replaces/refreshes related collections while preserving candidate identity.
         """
-        candidate = await cls.get_by_email(session, data.email)
+        candidate: Optional[Candidate] = None
+        if candidate_id:
+            candidate = await cls.get_candidate(session, candidate_id)
+
+        if not candidate and data.email:
+            candidate = await cls.get_by_email(session, data.email)
 
         if not candidate:
             candidate = Candidate(
-                full_name=data.full_name,
-                email=data.email,
+                full_name=data.full_name or "Candidate",
+                email=data.email or "candidate@careerpilot.ai",
                 headline=data.headline,
                 summary=data.summary,
                 location=data.location,
@@ -247,7 +252,8 @@ class ProfileService:
             await session.flush()
         else:
             # Update core attributes
-            candidate.full_name = data.full_name
+            if data.full_name:
+                candidate.full_name = data.full_name
             candidate.headline = data.headline or candidate.headline
             candidate.summary = data.summary or candidate.summary
             candidate.location = data.location or candidate.location

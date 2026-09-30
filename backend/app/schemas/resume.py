@@ -34,6 +34,10 @@ class ResumeUploadResponse(BaseModel):
 class ResumeConfirmRequest(BaseModel):
     document_id: str
     candidate_data: StructuredResumeImport
+    candidate_id: Optional[str] = Field(
+        None,
+        description="Optional candidate ID to associate and apply structured profile to."
+    )
     replace_existing: bool = Field(
         True,
         description="Whether to replace or update existing profile sections."

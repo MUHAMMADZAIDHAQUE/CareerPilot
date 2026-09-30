@@ -618,18 +618,25 @@ class ResumeParserService:
         session: AsyncSession,
         document_id: str,
         candidate_data: StructuredResumeImport,
+        candidate_id: Optional[str] = None,
     ) -> Candidate:
         """
         Permanent confirmation step:
         Applies user-reviewed structured data to candidate profile and links ResumeDocument.
         """
-        # 1. Upsert candidate profile
-        candidate = await ProfileService.import_structured_resume(session, candidate_data)
-
-        # 2. Link ResumeDocument to candidate
+        # 1. Resolve target candidate ID (from argument or existing document association)
         stmt = select(ResumeDocument).where(ResumeDocument.id == document_id)
         res = await session.execute(stmt)
         doc = res.scalars().first()
+
+        target_cand_id = candidate_id or (doc.candidate_id if doc else None)
+
+        # 2. Upsert candidate profile
+        candidate = await ProfileService.import_structured_resume(
+            session, candidate_data, candidate_id=target_cand_id
+        )
+
+        # 3. Link ResumeDocument to candidate
         if doc:
             doc.candidate_id = candidate.id
             await session.commit()

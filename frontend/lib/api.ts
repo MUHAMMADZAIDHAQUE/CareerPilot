@@ -467,12 +467,14 @@ export async function uploadResumeFile(file: File, candidateId?: string): Promis
 export async function confirmResumeImport(documentId: string, candidateData: any): Promise<ApiFetchResult<Candidate>> {
   const startTime = performance.now();
   try {
+    const targetCandidateId = getCurrentCandidateId();
     const res = await fetch(`${BASE_HOST}/api/resume/confirm`, {
       method: "POST",
       headers: getAuthHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({
         document_id: documentId,
         candidate_data: candidateData,
+        candidate_id: targetCandidateId,
         replace_existing: true,
       }),
     });

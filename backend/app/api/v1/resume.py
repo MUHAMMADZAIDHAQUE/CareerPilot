@@ -114,12 +114,18 @@ async def upload_resume(
 async def confirm_resume_import(
     request: ResumeConfirmRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> ResumeConfirmResponse:
+    resolved_candidate_id = request.candidate_id
+    if not resolved_candidate_id and current_user and current_user.candidate:
+        resolved_candidate_id = current_user.candidate.id
+
     try:
         candidate = await ResumeParserService.confirm_and_apply_resume(
             session=db,
             document_id=request.document_id,
             candidate_data=request.candidate_data,
+            candidate_id=resolved_candidate_id,
         )
 
         return ResumeConfirmResponse(
