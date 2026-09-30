@@ -53,7 +53,7 @@ class InterviewService:
                 .order_by(InterviewPreparation.created_at.desc())
             )
             res = await session.execute(existing_stmt)
-            existing = res.scalar_one_or_none()
+            existing = res.scalars().first()
             if existing:
                 return existing
 
@@ -97,7 +97,7 @@ class InterviewService:
                 .limit(1)
             )
             cand_res = await session.execute(cand_stmt)
-            candidate = cand_res.scalar_one_or_none()
+            candidate = cand_res.scalars().first()
 
         # 3. Fetch Tailored Resume Version (if specified or latest for job)
         tailored_resume_data = None
@@ -394,7 +394,7 @@ class InterviewService:
                 .order_by(InterviewPreparation.created_at.desc())
             )
             p_res = await session.execute(prep_stmt)
-            prep = p_res.scalar_one_or_none()
+            prep = p_res.scalars().first()
 
             # Cycle categories: 0=Tech, 1=Follow-up/Project, 2=Behavioral, 3=JD-Specific, 4=Resume-Specific
             next_q = None
