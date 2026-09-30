@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
 
-from backend.app.api.deps import get_db
+from backend.app.api.deps import get_db, get_optional_current_user
+from backend.app.models.user import User
 from backend.app.services.profile_service import ProfileService
 from backend.app.schemas.candidate import (
     CandidateCreate,
@@ -53,8 +54,13 @@ async def create_profile(
 async def get_profile(
     candidate_id: Optional[str] = Query(None, description="Optional Candidate ID. If omitted, returns first candidate profile."),
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> CandidateRead:
-    candidate = await ProfileService.get_candidate(db, candidate_id)
+    resolved_candidate_id = candidate_id
+    if not resolved_candidate_id and current_user and current_user.candidate:
+        resolved_candidate_id = current_user.candidate.id
+
+    candidate = await ProfileService.get_candidate(db, resolved_candidate_id)
     if not candidate:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

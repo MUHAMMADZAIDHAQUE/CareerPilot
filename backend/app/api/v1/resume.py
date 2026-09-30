@@ -47,6 +47,7 @@ async def upload_resume(
     file: UploadFile = File(..., description="Resume file (.pdf, .tex, .txt, .md)"),
     candidate_id: Optional[str] = Form(None, description="Optional Candidate ID to associate"),
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> ResumeUploadResponse:
     filename = file.filename or "uploaded_resume.pdf"
     ext = Path(filename).suffix.lower()
@@ -70,13 +71,17 @@ async def upload_resume(
             detail="File size exceeds the 10 MB maximum limit.",
         )
 
+    resolved_candidate_id = candidate_id
+    if not resolved_candidate_id and current_user and current_user.candidate:
+        resolved_candidate_id = current_user.candidate.id
+
     try:
         resume_doc, structured_data, master_saved = await ResumeParserService.process_resume_upload(
             session=db,
             file_bytes=file_bytes,
             filename=filename,
             content_type=file.content_type,
-            candidate_id=candidate_id,
+            candidate_id=resolved_candidate_id,
         )
 
         return ResumeUploadResponse(
@@ -139,10 +144,15 @@ async def confirm_resume_import(
 async def list_resume_documents(
     candidate_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> List[ResumeDocumentRead]:
+    resolved_candidate_id = candidate_id
+    if not resolved_candidate_id and current_user and current_user.candidate:
+        resolved_candidate_id = current_user.candidate.id
+
     stmt = select(ResumeDocument)
-    if candidate_id:
-        stmt = stmt.where(ResumeDocument.candidate_id == candidate_id)
+    if resolved_candidate_id:
+        stmt = stmt.where(ResumeDocument.candidate_id == resolved_candidate_id)
     stmt = stmt.order_by(ResumeDocument.created_at.desc())
     res = await db.execute(stmt)
     return list(res.scalars().all())

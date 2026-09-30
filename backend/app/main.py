@@ -151,15 +151,19 @@ from backend.app.api.v1.interview import router as interview_router
 from backend.app.api.v1.career import router as career_router
 from backend.app.api.v1.github import router as github_router
 from backend.app.api.v1.dashboard import router as dashboard_router
+from backend.app.api.v1.auth import router as auth_router
+from backend.app.api.v1.admin import router as admin_router
 
 
 # -----------------------------------------------------------------------------
 # Route Registration
 # -----------------------------------------------------------------------------
 
-# Mount explicit endpoints requested: /health, /api/health, /api/profile, /api/resume, /api/resumes, /api/jobs, /api/contacts, /api/outreach, /api/applications, /api/interview, /api/career, /api/github, /api/dashboard
+# Mount explicit endpoints requested: /health, /api/health, /api/profile, /api/resume, /api/resumes, /api/jobs, /api/contacts, /api/outreach, /api/applications, /api/interview, /api/career, /api/github, /api/dashboard, /api/auth, /api/admin
 app.include_router(health_router)
 app.include_router(health_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
+app.include_router(admin_router, prefix="/api")
 app.include_router(profile_router, prefix="/api")
 app.include_router(resume_router, prefix="/api")
 app.include_router(resumes_router, prefix="/api")

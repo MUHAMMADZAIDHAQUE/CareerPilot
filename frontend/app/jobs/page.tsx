@@ -64,6 +64,7 @@ const DEFAULT_SOURCES = [
 ];
 
 const INDIA_CITIES = [
+  "All Locations",
   "All India",
   "Remote India",
   "Bengaluru",
@@ -147,7 +148,12 @@ export default function JobDiscoveryPortalPage() {
     setSearching(true);
     setError(null);
     try {
-      const locCandidates = selectedLocation === "All India" ? ["India"] : [selectedLocation];
+      let locCandidates: string[] | undefined = undefined;
+      if (selectedLocation === "All India") {
+        locCandidates = ["India"];
+      } else if (selectedLocation !== "All Locations") {
+        locCandidates = [selectedLocation];
+      }
       const payload: JobSearchFilterRequest = {
         query: searchQuery.trim() || undefined,
         sources: selectedSources.length > 0 ? selectedSources : undefined,

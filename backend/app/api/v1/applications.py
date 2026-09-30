@@ -41,8 +41,11 @@ router = APIRouter(tags=["Application CRM & Pipeline"])
 async def create_application(
     payload: ApplicationCreate,
     session: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     try:
+        if not payload.candidate_id and isinstance(current_user, User) and current_user.candidate:
+            payload.candidate_id = current_user.candidate.id
         return await ApplicationService.create_application(
             session=session,
             payload=payload,
