@@ -1,10 +1,11 @@
 import httpx
 import uuid
 import sys
+import os
 import time
 
-FRONTEND_URL = "https://proudly-knowledge-still-carl.trycloudflare.com"
-BACKEND_URL = "https://mardi-contacts-linked-terrain.trycloudflare.com"
+FRONTEND_URL = os.environ.get("FRONTEND_URL") or (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:3000")
+BACKEND_URL = os.environ.get("BACKEND_URL") or (sys.argv[2] if len(sys.argv) > 2 else "http://localhost:8000")
 
 print("="*75)
 print("TESTING ALL PUBLIC FRONTEND ROUTES & API BACKEND INTEGRATIONS")

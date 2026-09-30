@@ -5,10 +5,11 @@ admin endpoints, and unauthenticated ingress against the live production backend
 """
 
 import sys
+import os
 import uuid
 import httpx
 
-BACKEND_URL = "http://127.0.0.1:8000"
+BACKEND_URL = os.environ.get("BACKEND_URL") or (sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8000")
 
 def log_check(step_num: int, name: str, passed: bool, detail: str = ""):
     icon = "✅ PASS" if passed else "❌ FAIL"
