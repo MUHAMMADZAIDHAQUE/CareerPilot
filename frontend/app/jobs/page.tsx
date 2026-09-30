@@ -40,6 +40,7 @@ import {
   fetchCandidateProfile,
   Candidate,
   enqueueJobToQueue,
+  getCurrentCandidateId,
 } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -99,7 +100,7 @@ export default function JobDiscoveryPortalPage() {
 
   // Search & Filters State
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState("All India");
+  const [selectedLocation, setSelectedLocation] = useState("All Locations");
   const [selectedSources, setSelectedSources] = useState<string[]>(DEFAULT_SOURCES);
   const [fresherMode, setFresherMode] = useState(true);
   const [selectedExp, setSelectedExp] = useState<string[]>(["Fresher", "Entry Level", "0-1 years", "0-2 years", "Internship"]);
@@ -216,7 +217,7 @@ export default function JobDiscoveryPortalPage() {
   };
 
   const handleEnqueueJob = async (job: Job) => {
-    const candId = candidate?.id || "demo-candidate";
+    const candId = candidate?.id || getCurrentCandidateId() || "demo-candidate";
     const res = await enqueueJobToQueue(candId, job.id, "HIGH", `Staged from job search`);
     if (!res.error) {
       setQueuedJobIds((prev) => new Set([...prev, job.id]));

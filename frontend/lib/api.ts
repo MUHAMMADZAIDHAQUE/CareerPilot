@@ -194,7 +194,7 @@ export function getBaseHost(): string {
     return internal.replace(/\/api\/v1\/?$/, "").replace(/\/api\/?$/, "").replace(/\/+$/, "");
   }
 
-  return "http://127.0.0.1:8000";
+  return "https://careerpilot-backend-fk3o.onrender.com";
 }
 
 export function buildApiUrl(
@@ -207,7 +207,7 @@ export function buildApiUrl(
     ? base
     : (typeof window !== "undefined" && window.location?.origin
         ? window.location.origin
-        : "http://127.0.0.1:8000");
+        : "https://careerpilot-backend-fk3o.onrender.com");
 
   const url = new URL(cleanPath, baseForUrl);
 
@@ -1361,7 +1361,7 @@ export async function approveTailoredResumeApi(
   try {
     const res = await fetch(`${BASE_HOST}/api/resumes/tailored/${encodeURIComponent(versionId)}/approve`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ notes }),
     });
     const latencyMs = Math.round(performance.now() - startTime);
@@ -1385,7 +1385,7 @@ export async function rejectTailoredResumeApi(
   try {
     const res = await fetch(`${BASE_HOST}/api/resumes/tailored/${encodeURIComponent(versionId)}/reject`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ reason }),
     });
     const latencyMs = Math.round(performance.now() - startTime);
@@ -1409,7 +1409,7 @@ export async function updateTailoredResumeLatexApi(
   try {
     const res = await fetch(`${BASE_HOST}/api/resumes/tailored/${encodeURIComponent(versionId)}/latex`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ latex_content: latexContent }),
     });
     const latencyMs = Math.round(performance.now() - startTime);
@@ -1432,6 +1432,7 @@ export async function fetchTailoredResumeDiffApi(
   try {
     const res = await fetch(`${BASE_HOST}/api/resumes/tailored/${encodeURIComponent(versionId)}/diff`, {
       cache: "no-store",
+      headers: getAuthHeaders(),
     });
     const latencyMs = Math.round(performance.now() - startTime);
     if (!res.ok) {
@@ -1489,7 +1490,7 @@ export async function compileResumePdfApi(
   try {
     const res = await fetch(`${BASE_HOST}/api/resumes/${encodeURIComponent(resumeVersionId)}/compile`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(payload || {}),
     });
     const latencyMs = Math.round(performance.now() - startTime);
@@ -2840,12 +2841,13 @@ export async function fetchCareerSkillGapsApi(
 ): Promise<ApiFetchResult<SkillGapAnalysisResponse>> {
   const startTime = performance.now();
   try {
+    const targetCandidateId = candidateId || getCurrentCandidateId();
     const url = buildApiUrl("/api/career/skill-gaps", {
-      candidate_id: candidateId,
+      candidate_id: targetCandidateId || undefined,
     });
 
     const res = await fetch(url, {
-      headers: { "Accept": "application/json" },
+      headers: getAuthHeaders(),
     });
     const latencyMs = Math.round(performance.now() - startTime);
 
@@ -2951,10 +2953,14 @@ export async function analyzeGitHubApi(
 ): Promise<ApiFetchResult<GitHubAnalysisResponse>> {
   const startTime = performance.now();
   try {
+    const finalPayload = {
+      ...payload,
+      candidate_id: payload.candidate_id || getCurrentCandidateId() || undefined,
+    };
     const res = await fetch(`${BASE_HOST}/api/github/analyze`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Accept": "application/json" },
-      body: JSON.stringify(payload),
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(finalPayload),
     });
     const latencyMs = Math.round(performance.now() - startTime);
 
@@ -2976,13 +2982,14 @@ export async function fetchLatestGitHubAnalysisApi(
 ): Promise<ApiFetchResult<GitHubAnalysisResponse | null>> {
   const startTime = performance.now();
   try {
+    const targetCandidateId = candidateId || getCurrentCandidateId();
     const url = buildApiUrl("/api/github/latest", {
       username: username,
-      candidate_id: candidateId,
+      candidate_id: targetCandidateId || undefined,
     });
 
     const res = await fetch(url, {
-      headers: { "Accept": "application/json" },
+      headers: getAuthHeaders(),
     });
     const latencyMs = Math.round(performance.now() - startTime);
 
@@ -3770,10 +3777,14 @@ export async function searchJobsWithFiltersApi(
 ): Promise<ApiFetchResult<JobSearchFilterResponse>> {
   const startTime = performance.now();
   try {
+    const effectivePayload = {
+      ...payload,
+      candidate_id: payload.candidate_id || getCurrentCandidateId() || undefined,
+    };
     const res = await fetch(`${BASE_HOST}/api/v1/jobs/search`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Accept": "application/json" },
-      body: JSON.stringify(payload),
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(effectivePayload),
     });
     const latencyMs = Math.round(performance.now() - startTime);
     if (!res.ok) {
@@ -3792,7 +3803,7 @@ export async function fetchJobSourcesApi(): Promise<ApiFetchResult<SourceCapabil
   const startTime = performance.now();
   try {
     const res = await fetch(`${BASE_HOST}/api/v1/jobs/sources`, {
-      headers: { "Accept": "application/json" },
+      headers: getAuthHeaders(),
     });
     const latencyMs = Math.round(performance.now() - startTime);
     if (!res.ok) {
@@ -3860,10 +3871,11 @@ export async function ignoreJobApi(
 export async function fetchJobAlertsApi(candidateId?: string): Promise<ApiFetchResult<JobAlert[]>> {
   const startTime = performance.now();
   try {
-    const url = candidateId
-      ? `${BASE_HOST}/api/v1/job-alerts?candidate_id=${encodeURIComponent(candidateId)}`
+    const targetCandidateId = candidateId || getCurrentCandidateId();
+    const url = targetCandidateId
+      ? `${BASE_HOST}/api/v1/job-alerts?candidate_id=${encodeURIComponent(targetCandidateId)}`
       : `${BASE_HOST}/api/v1/job-alerts`;
-    const res = await fetch(url, { headers: { "Accept": "application/json" } });
+    const res = await fetch(url, { headers: getAuthHeaders() });
     const latencyMs = Math.round(performance.now() - startTime);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -3880,10 +3892,14 @@ export async function fetchJobAlertsApi(candidateId?: string): Promise<ApiFetchR
 export async function createJobAlertApi(payload: Partial<JobAlert>): Promise<ApiFetchResult<JobAlert>> {
   const startTime = performance.now();
   try {
+    const targetPayload = {
+      ...payload,
+      candidate_id: payload.candidate_id || getCurrentCandidateId() || undefined,
+    };
     const res = await fetch(`${BASE_HOST}/api/v1/job-alerts`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Accept": "application/json" },
-      body: JSON.stringify(payload),
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(targetPayload),
     });
     const latencyMs = Math.round(performance.now() - startTime);
     if (!res.ok) {
@@ -3903,7 +3919,7 @@ export async function updateJobAlertApi(id: string, payload: Partial<JobAlert>):
   try {
     const res = await fetch(`${BASE_HOST}/api/v1/job-alerts/${encodeURIComponent(id)}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(payload),
     });
     const latencyMs = Math.round(performance.now() - startTime);
@@ -3924,6 +3940,7 @@ export async function deleteJobAlertApi(id: string): Promise<ApiFetchResult<bool
   try {
     const res = await fetch(`${BASE_HOST}/api/v1/job-alerts/${encodeURIComponent(id)}`, {
       method: "DELETE",
+      headers: getAuthHeaders(),
     });
     const latencyMs = Math.round(performance.now() - startTime);
     if (!res.ok && res.status !== 204) {
@@ -4380,6 +4397,9 @@ export async function fetchCurrentUser(): Promise<ApiFetchResult<UserProfile>> {
       return { data: null, error: `Unauthorized (Status ${res.status})`, latencyMs };
     }
     const data = await res.json();
+    if (typeof window !== "undefined") {
+      localStorage.setItem("careerpilot_user", JSON.stringify(data));
+    }
     return { data, error: null, latencyMs };
   } catch (err: any) {
     return { data: null, error: err?.message || "Failed to fetch user", latencyMs: 0 };

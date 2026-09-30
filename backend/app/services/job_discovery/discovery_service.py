@@ -1097,21 +1097,37 @@ class JobDiscoveryService:
         exec_res = await session.execute(query)
         db_jobs = exec_res.scalars().all()
 
-        # If zero jobs found and specific sources were requested, auto-discover to hydrate DB
+        # If zero jobs found and specific sources were requested, auto-discover to hydrate DB only if entire DB is empty
         if len(db_jobs) == 0 and filter_req.sources:
-            logger.info("Hydrating job store for requested sources...")
-            await cls.discover_multi_source(
-                session=session,
-                sources=filter_req.sources,
-                candidate_id=candidate.id if candidate else None,
-            )
-            exec_res = await session.execute(query)
-            db_jobs = exec_res.scalars().all()
+            total_db_jobs_count = (await session.execute(select(func.count(Job.id)))).scalar_one()
+            if total_db_jobs_count == 0:
+                logger.info("Database has zero jobs. Hydrating job store for requested sources...")
+                await cls.discover_multi_source(
+                    session=session,
+                    sources=filter_req.sources,
+                    candidate_id=candidate.id if candidate else None,
+                )
+                exec_res = await session.execute(query)
+                db_jobs = exec_res.scalars().all()
 
         # Score matching and convert to JobResponse for the candidate pool
         # Avoid unbounded sequential LLM/embedding network calls across thousands of DB records
         max_pool = max(filter_req.limit * 2, 20)
         jobs_pool = db_jobs[filter_req.offset : filter_req.offset + max_pool]
+
+        # Bulk fetch existing MatchResult records for candidate in this pool
+        existing_matches_map: Dict[str, MatchResult] = {}
+        if candidate and jobs_pool:
+            job_ids = [j.id for j in jobs_pool]
+            m_stmt = select(MatchResult).where(
+                MatchResult.candidate_id == candidate.id,
+                MatchResult.job_id.in_(job_ids),
+            )
+            m_res = await session.execute(m_stmt)
+            for m in m_res.scalars().all():
+                existing_matches_map[m.job_id] = m
+
+        cand_skills_set = {s.name.lower() for s in (candidate.skills or [])} if candidate else set()
 
         scored_jobs: List[JobResponse] = []
         for j in jobs_pool:
@@ -1124,22 +1140,27 @@ class JobDiscoveryService:
                 if is_senior_role and not j.is_fresher_eligible:
                     continue
 
-            # Candidate profile match scoring
+            # Candidate profile match scoring (use existing MatchResult or in-memory deterministic overlap)
             if candidate:
-                try:
-                    match_res = await MatchingService.match_candidate_to_job(
-                        session=session,
-                        job_id=j.id,
-                        candidate_id=candidate.id,
-                    )
+                if j.id in existing_matches_map:
+                    match_res = existing_matches_map[j.id]
                     job_resp.match_score = match_res.overall_match_score
                     job_resp.match_category = match_res.match_category
                     job_resp.eligibility_status = match_res.eligibility_status
                     job_resp.matched_skills = match_res.matched_skills
                     job_resp.missing_required_skills = match_res.missing_required_skills
                     job_resp.missing_preferred_skills = match_res.missing_preferred_skills
-                except Exception as e:
-                    logger.debug(f"Could not compute match for search job {j.id}: {e}")
+                else:
+                    req_skills = j.required_skills or []
+                    matched = [s for s in req_skills if s.lower() in cand_skills_set]
+                    missing = [s for s in req_skills if s.lower() not in cand_skills_set]
+                    score = round((len(matched) / max(len(req_skills), 1)) * 100.0, 1) if req_skills else 70.0
+                    job_resp.match_score = score
+                    job_resp.match_category = "HIGH_MATCH" if score >= 80 else ("GOOD_MATCH" if score >= 60 else "POSSIBLE_MATCH")
+                    job_resp.eligibility_status = "ELIGIBLE"
+                    job_resp.matched_skills = matched
+                    job_resp.missing_required_skills = missing
+                    job_resp.missing_preferred_skills = []
 
             # Min match score filter
             if filter_req.min_match_score is not None:

@@ -34,6 +34,7 @@ import {
   ApplicationQueueItem,
   ApplicationQueueSummaryStats,
   Candidate,
+  getCurrentCandidateId,
 } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -74,7 +75,7 @@ export default function PipelineQueuePage() {
         }
       }
 
-      const candId = cand?.id || "demo-candidate";
+      const candId = cand?.id || getCurrentCandidateId() || "demo-candidate";
 
       const [queueRes, statsRes] = await Promise.all([
         fetchApplicationQueue(candId),

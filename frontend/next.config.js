@@ -5,8 +5,7 @@ const nextConfig = {
     let backendInternal =
       process.env.BACKEND_INTERNAL_URL ||
       process.env.BACKEND_URL ||
-      process.env.NEXT_PUBLIC_API_URL ||
-      'http://127.0.0.1:8000';
+      'https://careerpilot-backend-fk3o.onrender.com';
 
     backendInternal = backendInternal
       .trim()
@@ -15,7 +14,7 @@ const nextConfig = {
       .replace(/\/+$/, '');
 
     if (!backendInternal.startsWith('http')) {
-      backendInternal = 'http://127.0.0.1:8000';
+      backendInternal = 'https://careerpilot-backend-fk3o.onrender.com';
     }
 
     return [

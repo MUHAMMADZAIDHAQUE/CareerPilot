@@ -694,10 +694,83 @@ function InterviewPrepContent() {
                   </div>
 
                   {activeSession.final_feedback && (
-                    <div className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
-                      {typeof activeSession.final_feedback === "string"
-                        ? activeSession.final_feedback
-                        : JSON.stringify(activeSession.final_feedback, null, 2)}
+                    <div className="space-y-4">
+                      {typeof activeSession.final_feedback === "object" ? (
+                        <>
+                          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
+                            {activeSession.final_feedback.overall_score != null && (
+                              <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700">
+                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Overall Performance Score</span>
+                                <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                                  {Math.round(activeSession.final_feedback.overall_score)}/100
+                                </span>
+                              </div>
+                            )}
+                            {activeSession.final_feedback.summary && (
+                              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                                {activeSession.final_feedback.summary}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {Array.isArray(activeSession.final_feedback.strengths) && activeSession.final_feedback.strengths.length > 0 && (
+                              <div className="p-4 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 space-y-2">
+                                <h4 className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                  <span>Demonstrated Strengths</span>
+                                </h4>
+                                <ul className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
+                                  {activeSession.final_feedback.strengths.map((s: string, idx: number) => (
+                                    <li key={idx} className="flex items-start gap-1.5">
+                                      <span className="text-emerald-600 font-bold">•</span>
+                                      <span>{s}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {Array.isArray(activeSession.final_feedback.weak_areas) && activeSession.final_feedback.weak_areas.length > 0 && (
+                              <div className="p-4 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 space-y-2">
+                                <h4 className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                                  <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                                  <span>Areas for Improvement</span>
+                                </h4>
+                                <ul className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
+                                  {activeSession.final_feedback.weak_areas.map((w: string, idx: number) => (
+                                    <li key={idx} className="flex items-start gap-1.5">
+                                      <span className="text-amber-600 font-bold">•</span>
+                                      <span>{w}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+
+                          {Array.isArray(activeSession.final_feedback.recommendations) && activeSession.final_feedback.recommendations.length > 0 && (
+                            <div className="p-4 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 space-y-2">
+                              <h4 className="text-xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+                                <Target className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                <span>Actionable Recommendations</span>
+                              </h4>
+                              <ul className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
+                                {activeSession.final_feedback.recommendations.map((r: string, idx: number) => (
+                                  <li key={idx} className="flex items-start gap-1.5">
+                                    <span className="text-blue-600 font-bold">•</span>
+                                    <span>{r}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                          {activeSession.final_feedback}
+                        </div>
+                      )}
                     </div>
                   )}
 

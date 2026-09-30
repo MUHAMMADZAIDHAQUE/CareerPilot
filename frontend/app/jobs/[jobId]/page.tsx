@@ -218,7 +218,12 @@ export default function JobMatchDetailPage() {
     );
   }
 
-  const score = matchResult ? Math.round(matchResult.overall_match_score * 100) : null;
+  const formatScore = (val: number | null | undefined): string => {
+    if (val == null) return "0";
+    return String(Math.round(val > 1 ? val : val * 100));
+  };
+
+  const score = matchResult ? formatScore(matchResult.overall_match_score) : null;
 
   return (
     <div className="space-y-10 pb-20">
@@ -514,35 +519,35 @@ export default function JobMatchDetailPage() {
               <div className="p-3 rounded-xl border border-slate-200 bg-white text-center">
                 <span className="text-xs text-slate-500 block">Required Skills</span>
                 <span className="text-lg font-semibold text-slate-900 block mt-1">
-                  {Math.round((matchResult.required_skill_coverage || 0) * 100)}%
+                  {formatScore(matchResult.required_skill_coverage)}%
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono">Weight 35%</span>
               </div>
               <div className="p-3 rounded-xl border border-slate-200 bg-white text-center">
                 <span className="text-xs text-slate-500 block">Semantic Fit</span>
                 <span className="text-lg font-semibold text-slate-900 block mt-1">
-                  {Math.round((matchResult.semantic_score || 0) * 100)}%
+                  {formatScore(matchResult.semantic_score)}%
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono">Weight 25%</span>
               </div>
               <div className="p-3 rounded-xl border border-slate-200 bg-white text-center">
                 <span className="text-xs text-slate-500 block">Experience</span>
                 <span className="text-lg font-semibold text-slate-900 block mt-1">
-                  {Math.round((matchResult.experience_compatibility || 0) * 100)}%
+                  {formatScore(matchResult.experience_compatibility)}%
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono">Weight 15%</span>
               </div>
               <div className="p-3 rounded-xl border border-slate-200 bg-white text-center">
                 <span className="text-xs text-slate-500 block">Projects</span>
                 <span className="text-lg font-semibold text-slate-900 block mt-1">
-                  {Math.round((matchResult.project_relevance || 0) * 100)}%
+                  {formatScore(matchResult.project_relevance)}%
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono">Weight 15%</span>
               </div>
               <div className="p-3 rounded-xl border border-slate-200 bg-white text-center">
                 <span className="text-xs text-slate-500 block">Education</span>
                 <span className="text-lg font-semibold text-slate-900 block mt-1">
-                  {Math.round((matchResult.education_compatibility || 0) * 100)}%
+                  {formatScore(matchResult.education_compatibility)}%
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono">Weight 10%</span>
               </div>
