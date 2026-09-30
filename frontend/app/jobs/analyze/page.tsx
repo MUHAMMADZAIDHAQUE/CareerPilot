@@ -629,7 +629,7 @@ export default function JobAnalyzePage() {
                   </div>
                   {req.context && (
                     <p className="text-xs text-slate-600 font-mono italic line-clamp-2 mt-1 bg-white p-2.5 rounded-lg border border-slate-200/60">
-                      "{req.context}"
+                      &quot;{req.context}&quot;
                     </p>
                   )}
                 </div>

@@ -153,6 +153,45 @@ class MatchingService:
 
         overall_score = round(max(0.0, min(100.0, raw_overall)), 1)
 
+        # Phase 16B: Categorization & Eligibility Analysis
+        is_fresher_job = bool(getattr(job, "is_fresher_eligible", False))
+        if req_years is not None and req_years >= 4.0 and cand_years < 2.0:
+            match_category = "INELIGIBLE"
+            eligibility_status = "INELIGIBLE"
+        elif overall_score >= 80.0:
+            match_category = "HIGH_MATCH"
+            eligibility_status = "ELIGIBLE"
+        elif overall_score >= 65.0:
+            match_category = "GOOD_MATCH"
+            eligibility_status = "ELIGIBLE"
+        elif overall_score >= 50.0:
+            match_category = "POSSIBLE_MATCH"
+            eligibility_status = "BORDERLINE" if (req_years and cand_years < req_years) else "ELIGIBLE"
+        else:
+            match_category = "LOW_MATCH"
+            eligibility_status = "BORDERLINE"
+
+        # Structured Why It Matches & Potential Gaps
+        why_it_matches: List[str] = []
+        for s in matched_req[:4]:
+            why_it_matches.append(f"✓ {s}")
+        for s in matched_pref[:2]:
+            why_it_matches.append(f"✓ {s}")
+        if relevant_projects:
+            why_it_matches.append(f"✓ Relevant project: {relevant_projects[0].title}")
+        if is_fresher_job:
+            why_it_matches.append("✓ Fresher eligible")
+        elif exp_score >= 80.0:
+            why_it_matches.append(f"✓ Experience aligned ({cand_years} yrs)")
+
+        potential_gaps: List[str] = []
+        for s in missing_req[:4]:
+            potential_gaps.append(f"• {s}")
+        for s in missing_pref[:2]:
+            potential_gaps.append(f"• {s}")
+        if req_years is not None and cand_years < req_years:
+            potential_gaps.append(f"• Requires {req_years} yrs (candidate has {cand_years} yrs)")
+
         # 12. Honest Grounded Explanation
         explanation = cls._generate_grounded_explanation(
             overall_score=overall_score,
@@ -187,6 +226,7 @@ class MatchingService:
             experience_compatibility=exp_score,
             education_compatibility=edu_score,
             project_relevance=proj_score,
+            structured_score=overall_score,
             total_score=overall_score,
             matched_skills=all_matched_skills,
             missing_required_skills=missing_req,
@@ -195,6 +235,9 @@ class MatchingService:
             evidence=[e.model_dump() for e in evidence_list],
             weights_used=weights_dict,
             explanation=explanation,
+            match_category=match_category,
+            eligibility_status=eligibility_status,
+            fresher_eligible=is_fresher_job,
         )
         session.add(match_record)
         await session.commit()
@@ -217,6 +260,13 @@ class MatchingService:
             evidence=evidence_list,
             explanation=explanation,
             weights_used=weights_dict,
+            match_category=match_category,
+            eligibility_status=eligibility_status,
+            fresher_eligible=is_fresher_job,
+            missing_skills=list(dict.fromkeys(missing_req + missing_pref)),
+            match_explanation=explanation,
+            why_it_matches=why_it_matches,
+            potential_gaps=potential_gaps,
             created_at=datetime.datetime.utcnow(),
         )
 

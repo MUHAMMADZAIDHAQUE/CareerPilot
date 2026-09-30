@@ -1,0 +1,113 @@
+{
+  "id": "CPOutreachPreparation001",
+  "name": "CareerPilot Outreach Preparation Engine",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f9c40001-2222-4000-8000-000000000001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [160, 240]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "careerpilot-outreach-preparation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "f9c40001-2222-4000-8000-000000000002",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [160, 420],
+      "webhookId": "5e1f03c2-6d7e-40fb-c94e-3e1b6f4a0d9c"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/api/v1/outreach/bulk-generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"job_id\": \"{{ $json.body?.job_id || 'sample-job-id' }}\",\n  \"candidate_id\": \"{{ $json.body?.candidate_id || null }}\",\n  \"contact_ids\": {{ JSON.stringify($json.body?.contact_ids || []) }},\n  \"channel\": \"{{ $json.body?.channel || 'LINKEDIN' }}\",\n  \"length\": \"{{ $json.body?.length || 'MEDIUM' }}\"\n}",
+        "options": {}
+      },
+      "id": "f9c40001-2222-4000-8000-000000000003",
+      "name": "FastAPI Prepare Outreach API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [440, 340]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const res = $json;\nconst drafts = res.drafts || [];\nconst validCount = drafts.filter(d => d.validation_results?.passed === true).length;\nconst blockedCount = drafts.filter(d => d.status === 'BLOCKED').length;\nconst reviewCount = drafts.filter(d => d.status === 'REVIEW_REQUIRED').length;\n\nreturn {\n  job_id: res.job_id,\n  total_requested: res.total_requested || 0,\n  total_generated: res.total_generated || 0,\n  validated_count: validCount,\n  review_required_count: reviewCount,\n  blocked_count: blockedCount,\n  no_message_sent: true,\n  audit_status: \"PREPARATION_COMPLETE_PENDING_HUMAN_APPROVAL\",\n  message: `Prepared ${res.total_generated} outreach drafts (${reviewCount} ready for human review, ${blockedCount} blocked). Zero messages sent.`\n};"
+      },
+      "id": "f9c40001-2222-4000-8000-000000000004",
+      "name": "Format Preparation Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 340]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "f9c40001-2222-4000-8000-000000000005",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [940, 420]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "FastAPI Prepare Outreach API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "FastAPI Prepare Outreach API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FastAPI Prepare Outreach API": {
+      "main": [
+        [
+          {
+            "node": "Format Preparation Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Preparation Report": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

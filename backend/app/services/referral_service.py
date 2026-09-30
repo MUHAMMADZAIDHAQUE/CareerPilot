@@ -591,3 +591,47 @@ class ReferralDiscoveryService:
             created_at=ref.created_at,
             updated_at=ref.updated_at,
         )
+
+    # -------------------------------------------------------------------------
+    # Phase 18: Delegated 50+ Multi-Source Discovery & Selection
+    # -------------------------------------------------------------------------
+    @classmethod
+    async def discover_referrals(cls, *args, **kwargs):
+        from backend.app.services.referral_discovery.discovery_service import ReferralDiscoveryService as Engine
+        return await Engine.discover_referrals(*args, **kwargs)
+
+    @classmethod
+    async def list_referral_contacts(cls, *args, **kwargs):
+        from backend.app.services.referral_discovery.discovery_service import ReferralDiscoveryService as Engine
+        return await Engine.list_referral_contacts(*args, **kwargs)
+
+    @classmethod
+    async def get_referral_contact_by_id(cls, *args, **kwargs):
+        from backend.app.services.referral_discovery.discovery_service import ReferralDiscoveryService as Engine
+        return await Engine.get_referral_contact_by_id(*args, **kwargs)
+
+    @classmethod
+    async def select_contact(cls, *args, **kwargs):
+        from backend.app.services.referral_discovery.discovery_service import ReferralDiscoveryService as Engine
+        return await Engine.select_contact(*args, **kwargs)
+
+    @classmethod
+    async def dismiss_contact(cls, *args, **kwargs):
+        from backend.app.services.referral_discovery.discovery_service import ReferralDiscoveryService as Engine
+        return await Engine.dismiss_contact(*args, **kwargs)
+
+    @classmethod
+    async def bulk_select_contacts(cls, *args, **kwargs):
+        from backend.app.services.referral_discovery.discovery_service import ReferralDiscoveryService as Engine
+        return await Engine.bulk_select_contacts(*args, **kwargs)
+
+    @classmethod
+    async def update_contact_notes(cls, *args, **kwargs):
+        from backend.app.services.referral_discovery.discovery_service import ReferralDiscoveryService as Engine
+        return await Engine.update_contact_notes(*args, **kwargs)
+
+    @classmethod
+    def get_sources_status(cls, *args, **kwargs):
+        from backend.app.services.referral_discovery.discovery_service import ReferralDiscoveryService as Engine
+        return Engine.get_sources_status(*args, **kwargs)
+

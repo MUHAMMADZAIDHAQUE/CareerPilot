@@ -53,7 +53,10 @@ next-env.d.ts
 
 # Local storage and data
 data/storage/
+data/n8n/
+.n8n/
 data/chrome-user-dir/
+*.sqlite
 *.sqlite3
 *.db
 scratch/
@@ -65,3 +68,5 @@ generated/resumes/*.pdf
 Thumbs.db
 .vscode/
 .idea/
+scripts/bin/
+

@@ -27,38 +27,43 @@ export function Table<T>({
 }: TableProps<T>) {
   if (data.length === 0) {
     return (
-      <div className="py-12 text-center text-xs text-slate-400 border border-slate-200 rounded-xl bg-slate-50/50">
+      <div className="py-12 text-center text-sm text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/30">
         {emptyText}
       </div>
     );
   }
 
   return (
-    <div className={`overflow-x-auto rounded-xl border border-slate-200 bg-white ${className}`}>
-      <table className="w-full text-left text-xs">
-        <thead className="bg-slate-50 border-b border-slate-200/80 text-slate-500 font-medium">
+    <div className={`overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] shadow-card dark:shadow-none ${className}`}>
+      <table className="w-full text-left text-sm">
+        <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-medium text-xs uppercase tracking-wider">
           <tr>
             {columns.map((col) => (
               <th
                 key={col.key}
-                className={`py-3 px-4 tracking-tight ${col.headerClassName || ""}`}
+                className={`py-3.5 px-4 ${col.headerClassName || ""}`}
               >
                 {col.header}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100 text-slate-700">
+        <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-200">
           {data.map((row, idx) => (
             <tr
               key={keyExtractor(row, idx)}
               onClick={() => onRowClick && onRowClick(row)}
               className={`transition-colors ${
-                onRowClick ? "cursor-pointer hover:bg-slate-50/80" : "hover:bg-slate-50/40"
+                onRowClick
+                  ? "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                  : "hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
               }`}
             >
               {columns.map((col) => (
-                <td key={col.key} className={`py-3 px-4 ${col.className || ""}`}>
+                <td
+                  key={col.key}
+                  className={`py-3.5 px-4 ${col.className || ""}`}
+                >
                   {col.render ? col.render(row, idx) : (row as any)[col.key]}
                 </td>
               ))}
@@ -69,3 +74,5 @@ export function Table<T>({
     </div>
   );
 }
+
+export default Table;

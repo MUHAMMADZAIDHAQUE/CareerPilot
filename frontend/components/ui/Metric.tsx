@@ -26,25 +26,31 @@ export const Metric: React.FC<MetricProps> = ({
   return (
     <div
       onClick={onClick}
-      className={`rounded-xl border border-slate-200/90 bg-white p-5 shadow-card transition-all ${
-        onClick ? "cursor-pointer hover:border-slate-300 hover:shadow-dropdown" : ""
+      className={`rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#111827] p-5 shadow-card dark:shadow-none transition-all duration-200 ${
+        onClick
+          ? "cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-dropdown dark:hover:shadow-darkDropdown hover:-translate-y-0.5"
+          : ""
       } ${className}`}
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-slate-500 tracking-tight">{label}</span>
-        {icon && <span className="text-slate-400 shrink-0">{icon}</span>}
+      <div className="flex items-center justify-between gap-2 min-w-0">
+        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate" title={label}>
+          {label}
+        </span>
+        {icon && <span className="text-slate-400 dark:text-slate-500 shrink-0">{icon}</span>}
       </div>
 
-      <div className="mt-2 flex items-baseline gap-2">
-        <span className="text-2xl font-semibold text-slate-900 tracking-tight">{value}</span>
+      <div className="mt-2.5 flex items-baseline gap-2">
+        <span className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+          {value}
+        </span>
         {change && (
           <span
-            className={`inline-flex items-center gap-0.5 text-xs font-medium ${
+            className={`inline-flex items-center gap-0.5 text-xs font-semibold ${
               change.trend === "up"
-                ? "text-emerald-700"
+                ? "text-emerald-700 dark:text-emerald-400"
                 : change.trend === "down"
-                ? "text-rose-700"
-                : "text-slate-600"
+                ? "text-rose-700 dark:text-rose-400"
+                : "text-slate-600 dark:text-slate-400"
             }`}
           >
             {change.trend === "up" && <TrendingUp className="w-3.5 h-3.5" />}
@@ -54,7 +60,13 @@ export const Metric: React.FC<MetricProps> = ({
         )}
       </div>
 
-      {subtext && <p className="mt-1 text-xs text-slate-400">{subtext}</p>}
+      {subtext && (
+        <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+          {subtext}
+        </p>
+      )}
     </div>
   );
 };
+
+export default Metric;

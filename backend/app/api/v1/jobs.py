@@ -12,6 +12,17 @@ from backend.app.schemas.job import (
     JobBulkImportRequest,
     JobBulkImportResponse,
     RecommendedJobsResponse,
+    JobDiscoveryRequest,
+    JobAlertItem,
+    JobDiscoveryResponse,
+    JobSearchFilterRequest,
+    JobSearchFilterResponse,
+    SourceCapabilityResponse,
+    JobSaveRequest,
+    JobIgnoreRequest,
+    JobAlertCreate,
+    JobAlertUpdate,
+    JobAlertResponse,
 )
 from backend.app.schemas.matching import (
     MatchRequest,
@@ -24,6 +35,47 @@ from backend.app.services.job_discovery import JobDiscoveryService
 from backend.app.core.logging import logger
 
 router = APIRouter(tags=["Jobs & Discovery Engine"])
+
+
+# -----------------------------------------------------------------------------
+# Phase 16B: Multi-Source Discovery & Sourcing Endpoints
+# -----------------------------------------------------------------------------
+
+@router.post(
+    "/jobs/discover",
+    response_model=JobDiscoveryResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Trigger modular multi-source job discovery and matching",
+    description="Runs multi-source discovery (LinkedIn, FreshersHunt, Careers, Indeed), normalizes, deduplicates, extracts requirements, matches against candidate, and formats alerts.",
+)
+async def discover_jobs(
+    payload: Optional[JobDiscoveryRequest] = None,
+    session: AsyncSession = Depends(get_db),
+):
+    req = payload or JobDiscoveryRequest()
+    try:
+        return await JobDiscoveryService.discover_multi_source(
+            session=session,
+            sources=req.sources,
+            candidate_id=req.candidate_id,
+            min_match_score=req.min_match_score,
+            batch_limit=req.batch_limit,
+        )
+    except Exception as e:
+        logger.error(f"Error in multi-source job discovery: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Job discovery failed: {str(e)}",
+        )
+
+
+@router.get(
+    "/jobs/sources/status",
+    summary="Get operational status of all modular job source adapters",
+    description="Returns status, health diagnostics, and enablement configuration for each source.",
+)
+async def get_source_adapters_status():
+    return await JobDiscoveryService.get_source_adapters_status()
 
 
 # -----------------------------------------------------------------------------
@@ -206,6 +258,168 @@ async def get_latest_match(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
+# -----------------------------------------------------------------------------
+# Phase 20: India Fresher Portal, Advanced Filters, and Alerts Endpoints
+# -----------------------------------------------------------------------------
+
+@router.post(
+    "/jobs/search",
+    response_model=JobSearchFilterResponse,
+    summary="Advanced faceted job search for India Freshers & Tech roles",
+    description="Filters across 11 sources, Fresher Mode, India cities, experience, work mode, and match score thresholding.",
+)
+async def search_jobs(
+    payload: JobSearchFilterRequest,
+    session: AsyncSession = Depends(get_db),
+):
+    try:
+        return await JobDiscoveryService.search_jobs_with_filters(
+            session=session,
+            filter_req=payload,
+        )
+    except Exception as e:
+        logger.exception("Error executing advanced job search")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to execute job search: {str(e)}",
+        )
+
+
+@router.get(
+    "/jobs/sources",
+    response_model=List[SourceCapabilityResponse],
+    summary="List all registered job sources and their capabilities",
+    description="Returns capability matrices for LinkedIn, Naukri, Internshala, Freshersworld, Indeed, Company Careers, Wellfound, Foundit, Glassdoor, etc.",
+)
+async def get_job_sources():
+    try:
+        return JobDiscoveryService.get_all_source_capabilities()
+    except Exception as e:
+        logger.error(f"Error fetching source capabilities: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve job sources: {str(e)}",
+        )
+
+
+@router.get(
+    "/jobs/sources/status",
+    summary="Operational health diagnostics for all source adapters",
+)
+async def get_source_adapters_status():
+    try:
+        return await JobDiscoveryService.get_source_adapters_status()
+    except Exception as e:
+        logger.error(f"Error checking source adapter health: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to check source adapters: {str(e)}",
+        )
+
+
+@router.post(
+    "/jobs/save",
+    summary="Save a discovered job to Application CRM with SAVED status",
+)
+async def save_job(
+    payload: JobSaveRequest,
+    session: AsyncSession = Depends(get_db),
+):
+    try:
+        return await JobDiscoveryService.save_job(session=session, req=payload)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error saving job: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save job: {str(e)}",
+        )
+
+
+@router.post(
+    "/jobs/ignore",
+    summary="Ignore a discovered job opportunity",
+)
+async def ignore_job(
+    payload: JobIgnoreRequest,
+    session: AsyncSession = Depends(get_db),
+):
+    try:
+        return await JobDiscoveryService.ignore_job(session=session, req=payload)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error ignoring job: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to ignore job: {str(e)}",
+        )
+
+
+@router.get(
+    "/job-alerts",
+    response_model=List[JobAlertResponse],
+    summary="List configured job search alerts",
+)
+async def list_job_alerts(
+    candidate_id: Optional[str] = Query(None),
+    session: AsyncSession = Depends(get_db),
+):
+    return await JobDiscoveryService.list_job_alerts(session=session, candidate_id=candidate_id)
+
+
+@router.post(
+    "/job-alerts",
+    response_model=JobAlertResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a new automated job search alert",
+)
+async def create_job_alert(
+    payload: JobAlertCreate,
+    session: AsyncSession = Depends(get_db),
+):
+    try:
+        return await JobDiscoveryService.create_job_alert(session=session, alert_in=payload)
+    except Exception as e:
+        logger.error(f"Error creating job alert: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create job alert: {str(e)}",
+        )
+
+
+@router.patch(
+    "/job-alerts/{alert_id}",
+    response_model=JobAlertResponse,
+    summary="Update an existing job alert",
+)
+async def update_job_alert(
+    alert_id: str,
+    payload: JobAlertUpdate,
+    session: AsyncSession = Depends(get_db),
+):
+    updated = await JobDiscoveryService.update_job_alert(session=session, alert_id=alert_id, alert_up=payload)
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Job alert '{alert_id}' not found.")
+    return updated
+
+
+@router.delete(
+    "/job-alerts/{alert_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a job alert",
+)
+async def delete_job_alert(
+    alert_id: str,
+    session: AsyncSession = Depends(get_db),
+):
+    success = await JobDiscoveryService.delete_job_alert(session=session, alert_id=alert_id)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Job alert '{alert_id}' not found.")
+    return None
+
+
 @router.get(
     "/jobs/{job_id}",
     response_model=JobResponse,
@@ -258,3 +472,4 @@ async def list_jobs(
         limit=limit,
         offset=offset,
     )
+

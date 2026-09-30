@@ -21,6 +21,27 @@ async def lifespan(app: FastAPI):
         f"Starting {settings.PROJECT_NAME} v{settings.VERSION} [{settings.ENVIRONMENT}]",
         extra={"env": settings.ENVIRONMENT}
     )
+    # Phase 23: Seed default job sources in catalog
+    try:
+        from backend.app.db.session import PrimarySessionLocal, _get_sqlite_session_factory
+        from backend.app.services.job_discovery.registry import JobSourceRegistry
+        if "sqlite" in settings.async_database_url:
+            factory = await _get_sqlite_session_factory()
+            async with factory() as session:
+                count = await JobSourceRegistry.seed_default_sources(session)
+                logger.info(f"Phase 23: Seeded/verified {count} default job sources (SQLite)")
+        else:
+            try:
+                async with PrimarySessionLocal() as session:
+                    count = await JobSourceRegistry.seed_default_sources(session)
+                    logger.info(f"Phase 23: Seeded/verified {count} default job sources (Postgres)")
+            except Exception as pg_err:
+                factory = await _get_sqlite_session_factory()
+                async with factory() as session:
+                    count = await JobSourceRegistry.seed_default_sources(session)
+                    logger.info(f"Phase 23: Seeded/verified {count} default job sources (SQLite fallback: {pg_err})")
+    except Exception as e:
+        logger.warning(f"Could not seed job sources on startup: {e}")
     yield
     logger.info(f"Shutting down {settings.PROJECT_NAME}")
 
@@ -43,6 +64,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|.*\.trycloudflare\.com|.*\.vercel\.app|.*\.pages\.dev|.*\.onrender\.com|.*careerpilot.*)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -81,6 +103,7 @@ async def custom_http_exception_handler(request: Request, exc: HTTPException):
         content={
             "error": "HTTPException",
             "message": exc.detail,
+            "detail": exc.detail,
             "status_code": exc.status_code,
             "path": request.url.path,
         },

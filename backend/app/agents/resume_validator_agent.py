@@ -56,7 +56,7 @@ class ResumeValidatorAgent:
     7. Required LaTeX sections and valid document structure exist.
     """
 
-    SECTION_PATTERN = re.compile(r"\\section\{([^}]+)\}", re.IGNORECASE)
+    SECTION_PATTERN = re.compile(r"\\(?:sub)*section\*?\{([^}]+)\}", re.IGNORECASE)
 
     # Numerical and metric patterns (captures %, \%, k, $, ms, requests/sec, etc.)
     METRIC_PATTERN = re.compile(
@@ -295,8 +295,24 @@ class ResumeValidatorAgent:
 
         found_normalized = {s.lower() for s in found_sections}
         missing = []
+
+        def has_section_match(req: str) -> bool:
+            r = req.lower()
+            for f in found_normalized:
+                if r in f or f in r:
+                    return True
+                if r == "technical skills" and "skills" in f:
+                    return True
+                if r == "experience" and ("work" in f or "experience" in f or "employment" in f):
+                    return True
+                if r == "projects" and ("project" in f or "portfolio" in f):
+                    return True
+                if r == "education" and ("education" in f or "academic" in f):
+                    return True
+            return False
+
         for req in cls.REQUIRED_SECTIONS:
-            if req.lower() not in found_normalized:
+            if not has_section_match(req):
                 missing.append(req)
 
         return len(missing) == 0, found_sections, missing

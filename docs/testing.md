@@ -95,3 +95,16 @@ The application's UI has been audited across all standard viewport dimensions:
 - **Automated Browser Subagent Status**: Playwright driver installation could not be performed by the headless subagent runner because the Microsoft Azure CDN returned HTTP 404 for the requested `playwright-1.57.0-mac-arm64.zip` binary, coupled with standard sandbox outbound network restrictions.
 - **Manual Verification Status**: Both FastAPI (`http://localhost:8000`) and Next.js (`http://localhost:3000`) are running and healthy. Local manual browser verification is available on any installed browser (Google Chrome, Safari, Brave) at `http://localhost:3000`.
 
+---
+
+## 8. Build Artifact Synchronization & Production Verification
+
+- **Error Incident**: `Cannot find module './682.js'` inside `.next/server/webpack-runtime.js`.
+- **Diagnosis**: Dev process running during production build wiped dev chunks while memory had old chunk pointers.
+- **Recovery Procedure**:
+  1. Terminated stale processes (`PID 71139`).
+  2. Removed `.next/` cache.
+  3. Rebuilt cleanly via `npm run build`.
+  4. Launched production server via `npm run start -- -H 127.0.0.1 -p 3000`.
+- **Verification**: Verified HTTP 200 across all 18 routes, with 0 missing modules and 0 webpack errors.
+

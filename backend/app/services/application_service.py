@@ -1,4 +1,5 @@
 import datetime
+import uuid
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, desc
@@ -7,12 +8,30 @@ from sqlalchemy.orm import selectinload
 from backend.app.models.job import Job, MatchResult
 from backend.app.models.candidate import Candidate
 from backend.app.models.resume import ResumeVersion
-from backend.app.models.application import Application, ApplicationStatus
+from backend.app.models.referral import ReferralContact
+from backend.app.models.outreach import OutreachDraft, OutreachDispatch
+from backend.app.models.application import (
+    Application,
+    ApplicationStatus,
+    InboundResponse,
+    Assessment,
+    Deadline,
+    InterviewEvent,
+    Notification,
+    ConnectedProvider,
+)
 from backend.app.schemas.application import (
     ApplicationCreate,
     ApplicationUpdate,
     ApplicationResponse,
     KanbanBoardResponse,
+    InboundResponseResponse,
+    AssessmentResponse,
+    DeadlineResponse,
+    InterviewEventResponse,
+    NotificationResponse,
+    ConnectedProviderResponse,
+    ApplicationDetailResponse,
 )
 from backend.app.core.logging import logger
 
@@ -22,12 +41,22 @@ class ApplicationService:
     Service for Application CRM, tracking job opportunities across the Kanban lifecycle.
     """
 
-    # Mapping of 7 primary Kanban columns to corresponding ApplicationStatus values
+    # Mapping of Kanban columns to corresponding ApplicationStatus values across full 16 stages
     KANBAN_COLUMN_MAP: Dict[str, List[str]] = {
-        "Saved": [ApplicationStatus.SAVED],
-        "Ready": [ApplicationStatus.READY_TO_APPLY],
+        "Saved": [
+            ApplicationStatus.SAVED,
+            ApplicationStatus.DISCOVERED,
+            ApplicationStatus.ANALYZING,
+            ApplicationStatus.RESUME_PREPARED,
+            ApplicationStatus.RESUME_APPROVED,
+            ApplicationStatus.REFERRAL_RESEARCH,
+            ApplicationStatus.OUTREACH_PREPARED,
+            ApplicationStatus.OUTREACH_APPROVED,
+            ApplicationStatus.OUTREACH_SENT,
+        ],
+        "Ready": [ApplicationStatus.APPLICATION_READY, ApplicationStatus.READY_TO_APPLY],
         "Applied": [ApplicationStatus.APPLIED],
-        "Screening": [ApplicationStatus.SCREENING],
+        "Screening": [ApplicationStatus.SCREENING, ApplicationStatus.ASSESSMENT],
         "Interview": [
             ApplicationStatus.INTERVIEW,
             ApplicationStatus.TECHNICAL,
@@ -40,9 +69,9 @@ class ApplicationService:
     # Reverse lookup for stage drops: column name -> default status
     COLUMN_DEFAULT_STATUS: Dict[str, str] = {
         "Saved": ApplicationStatus.SAVED,
-        "Ready": ApplicationStatus.READY_TO_APPLY,
+        "Ready": ApplicationStatus.APPLICATION_READY,
         "Applied": ApplicationStatus.APPLIED,
-        "Screening": ApplicationStatus.SCREENING,
+        "Screening": ApplicationStatus.ASSESSMENT,
         "Interview": ApplicationStatus.INTERVIEW,
         "Offer": ApplicationStatus.OFFER,
         "Rejected": ApplicationStatus.REJECTED,
@@ -334,6 +363,7 @@ class ApplicationService:
         }
 
         # Distribute into columns
+        default_col = "Discovered" if "Discovered" in columns else list(columns.keys())[0]
         for app_resp in all_apps:
             placed = False
             for col_name, allowed_statuses in cls.KANBAN_COLUMN_MAP.items():
@@ -342,12 +372,213 @@ class ApplicationService:
                     placed = True
                     break
             if not placed:
-                # Default fallback to Saved
-                columns["Saved"].append(app_resp)
+                columns[default_col].append(app_resp)
 
         return KanbanBoardResponse(
             columns=columns,
             total_applications=len(all_apps),
+        )
+
+    @classmethod
+    async def get_application_detail(
+        cls,
+        session: AsyncSession,
+        application_id: str,
+    ) -> Optional[ApplicationDetailResponse]:
+        """
+        Comprehensive Application detail view:
+        Combines job, tailored resume, referrals, outreach drafts,
+        inbound responses, assessments, deadlines, interviews, and timeline.
+        """
+        stmt = (
+            select(Application)
+            .where(Application.id == application_id)
+            .options(
+                selectinload(Application.job),
+                selectinload(Application.candidate),
+                selectinload(Application.resume_version),
+            )
+        )
+        res = await session.execute(stmt)
+        app = res.scalar_one_or_none()
+        if not app:
+            return None
+
+        app_resp = await cls._populate_response(session, app)
+
+        # 1. Job details
+        job_data = None
+        if app.job:
+            job_data = {
+                "id": app.job.id,
+                "company": app.job.company,
+                "role": app.job.role,
+                "normalized_title": getattr(app.job, "normalized_title", None) or app.job.role,
+                "location": app.job.location,
+                "remote_status": getattr(app.job, "remote_status", "Unknown"),
+                "employment_type": app.job.employment_type,
+                "experience_level": getattr(app.job, "experience_level", "Unknown"),
+                "salary": app.job.salary,
+                "deadline": app.job.deadline,
+                "canonical_url": app.job.canonical_url,
+                "application_url": app.job.application_url,
+                "official_company_url": getattr(app.job, "official_company_url", None) or app.job.application_url,
+                "source_name": getattr(app.job, "source_name", "Direct"),
+                "raw_description": app.job.raw_description,
+                "required_skills": app.job.required_skills or [],
+                "preferred_skills": app.job.preferred_skills or [],
+            }
+
+        # 2. Resume version details
+        resume_data = None
+        if app.resume_version:
+            rv = app.resume_version
+            resume_data = {
+                "id": rv.id,
+                "version_number": rv.version_number,
+                "job_id": rv.job_id,
+                "pdf_path": getattr(rv, "pdf_path", None),
+                "tex_path": getattr(rv, "tex_path", None),
+                "approval_status": getattr(rv, "approval_status", "DRAFT"),
+                "tailored_summary": getattr(rv, "tailored_summary", None),
+            }
+
+        # 3. Referral contacts
+        ref_stmt = select(ReferralContact).where(ReferralContact.job_id == app.job_id).order_by(desc(ReferralContact.relevance_score))
+        ref_res = await session.execute(ref_stmt)
+        referral_contacts = [
+            {
+                "id": c.id,
+                "name": c.name,
+                "current_role": getattr(c, "current_title", "Engineer"),
+                "company": c.company,
+                "department": c.department,
+                "referral_score": getattr(c, "relevance_score", 0.0),
+                "connection_path": getattr(c, "relationship_type", "EMPLOYEE"),
+                "is_selected": getattr(c, "outreach_status", "") == "SELECTED",
+                "linkedin_url": getattr(c, "profile_url", None),
+            }
+            for c in ref_res.scalars().all()
+        ]
+
+        # 4. Outreach drafts & dispatches
+        draft_stmt = select(OutreachDraft).where(OutreachDraft.job_id == app.job_id).order_by(desc(OutreachDraft.created_at))
+        draft_res = await session.execute(draft_stmt)
+        outreach_drafts = [
+            {
+                "id": d.id,
+                "recipient_name": d.recipient_name,
+                "channel": d.channel.value if hasattr(d.channel, "value") else str(d.channel),
+                "status": d.status,
+                "subject": d.subject,
+                "message_body": d.message_body,
+                "dispatch_status": d.dispatch_status,
+                "created_at": d.created_at.isoformat() if d.created_at else None,
+            }
+            for d in draft_res.scalars().all()
+        ]
+
+        # 5. Inbound Responses
+        resp_stmt = select(InboundResponse).where(
+            or_(
+                InboundResponse.application_id == app.id,
+                InboundResponse.job_id == app.job_id,
+            )
+        ).order_by(desc(InboundResponse.received_at))
+        resp_res = await session.execute(resp_stmt)
+        inbound_responses = [InboundResponseResponse.model_validate(r) for r in resp_res.scalars().all()]
+
+        # 6. Assessments
+        asmt_stmt = select(Assessment).where(
+            or_(
+                Assessment.application_id == app.id,
+                Assessment.job_id == app.job_id,
+            )
+        ).order_by(desc(Assessment.created_at))
+        asmt_res = await session.execute(asmt_stmt)
+        assessments = [AssessmentResponse.model_validate(a) for a in asmt_res.scalars().all()]
+
+        # 7. Deadlines
+        dl_stmt = select(Deadline).where(Deadline.application_id == app.id).order_by(Deadline.due_date.asc())
+        dl_res = await session.execute(dl_stmt)
+        deadlines = [DeadlineResponse.model_validate(d) for d in dl_res.scalars().all()]
+
+        # 8. Interview events
+        ie_stmt = select(InterviewEvent).where(
+            or_(
+                InterviewEvent.application_id == app.id,
+                InterviewEvent.job_id == app.job_id,
+            )
+        ).order_by(InterviewEvent.scheduled_at.asc())
+        ie_res = await session.execute(ie_stmt)
+        interviews = [InterviewEventResponse.model_validate(i) for i in ie_res.scalars().all()]
+
+        # 9. Chronological Timeline construction
+        timeline: List[Dict[str, Any]] = []
+
+        if app.job and app.job.created_at:
+            timeline.append({
+                "timestamp": app.job.created_at.isoformat(),
+                "event": "JOB_DISCOVERED",
+                "title": f"Opportunity discovered at {app.job.company}",
+                "detail": f"Role: {app.job.role} (Source: {app.job.source_name})",
+            })
+
+        if app.created_at:
+            timeline.append({
+                "timestamp": app.created_at.isoformat(),
+                "event": "APPLICATION_TRACKED",
+                "title": "Application tracked in CRM",
+                "detail": f"Status initialized to {app.status}",
+            })
+
+        for d in outreach_drafts:
+            if d.get("created_at"):
+                timeline.append({
+                    "timestamp": d["created_at"],
+                    "event": "OUTREACH_PREPARED",
+                    "title": f"Outreach drafted for {d['recipient_name']}",
+                    "detail": f"Channel: {d['channel']} | Status: {d['status']}",
+                })
+
+        for r in inbound_responses:
+            timeline.append({
+                "timestamp": r.received_at.isoformat(),
+                "event": "RESPONSE_RECEIVED",
+                "title": f"Response received: {r.classification}",
+                "detail": f"From: {r.sender} | Subject: {r.subject or 'Message'}",
+            })
+
+        for a in assessments:
+            timeline.append({
+                "timestamp": a.created_at.isoformat(),
+                "event": "ASSESSMENT_DETECTED",
+                "title": f"Assessment received: {a.title}",
+                "detail": f"Platform: {a.platform} | Due: {a.deadline.isoformat() if a.deadline else 'Not specified'}",
+            })
+
+        for i in interviews:
+            timeline.append({
+                "timestamp": i.scheduled_at.isoformat(),
+                "event": "INTERVIEW_SCHEDULED",
+                "title": f"{i.interview_type} Interview with {i.company}",
+                "detail": f"Status: {i.status} | Meeting: {i.meeting_url or 'Link in email'}",
+            })
+
+        # Sort timeline ascending by timestamp
+        timeline.sort(key=lambda t: t["timestamp"])
+
+        return ApplicationDetailResponse(
+            application=app_resp,
+            job=job_data,
+            resume_version=resume_data,
+            referral_contacts=referral_contacts,
+            outreach_drafts=outreach_drafts,
+            inbound_responses=inbound_responses,
+            assessments=assessments,
+            deadlines=deadlines,
+            interview_events=interviews,
+            timeline=timeline,
         )
 
     @classmethod
@@ -364,5 +595,109 @@ class ApplicationService:
             return False
 
         await session.delete(record)
+        await session.commit()
+        return True
+
+    # -------------------------------------------------------------------------
+    # Notification & Provider Helpers
+    # -------------------------------------------------------------------------
+
+    @classmethod
+    async def list_notifications(
+        cls,
+        session: AsyncSession,
+        candidate_id: Optional[str] = None,
+    ) -> List[NotificationResponse]:
+        query = select(Notification).order_by(desc(Notification.created_at))
+        if candidate_id:
+            query = query.where(Notification.candidate_id == candidate_id)
+        res = await session.execute(query)
+        return [NotificationResponse.model_validate(n) for n in res.scalars().all()]
+
+    @classmethod
+    async def mark_notification_read(
+        cls,
+        session: AsyncSession,
+        notification_id: str,
+    ) -> bool:
+        res = await session.execute(select(Notification).where(Notification.id == notification_id))
+        n = res.scalars().first()
+        if not n:
+            return False
+        n.is_read = True
+        await session.commit()
+        return True
+
+    @classmethod
+    async def list_connected_providers(
+        cls,
+        session: AsyncSession,
+        candidate_id: Optional[str] = None,
+    ) -> List[ConnectedProviderResponse]:
+        query = select(ConnectedProvider).order_by(desc(ConnectedProvider.created_at))
+        if candidate_id:
+            query = query.where(ConnectedProvider.candidate_id == candidate_id)
+        res = await session.execute(query)
+        return [ConnectedProviderResponse.model_validate(p) for p in res.scalars().all()]
+
+    @classmethod
+    async def connect_provider(
+        cls,
+        session: AsyncSession,
+        provider_type: str,
+        email_address: str,
+        candidate_id: Optional[str] = None,
+    ) -> ConnectedProviderResponse:
+        cand_id = candidate_id
+        if not cand_id:
+            c_res = await session.execute(select(Candidate).order_by(desc(Candidate.created_at)).limit(1))
+            cand = c_res.scalars().first()
+            cand_id = cand.id if cand else None
+
+        stmt = select(ConnectedProvider).where(
+            ConnectedProvider.provider_type == provider_type.upper(),
+        )
+        if cand_id:
+            stmt = stmt.where(ConnectedProvider.candidate_id == cand_id)
+        existing = (await session.execute(stmt)).scalars().first()
+
+        if existing:
+            existing.email_address = email_address
+            existing.is_connected = True
+            existing.status = "CONNECTED"
+            provider = existing
+        else:
+            provider = ConnectedProvider(
+                id=str(uuid.uuid4()),
+                candidate_id=cand_id,
+                provider_type=provider_type.upper(),
+                email_address=email_address,
+                is_connected=True,
+                status="CONNECTED",
+                scopes=["https://www.googleapis.com/auth/gmail.send"] if provider_type.upper() == "GMAIL" else ["Mail.Send"],
+                metadata_json={"connected_at": datetime.datetime.utcnow().isoformat()},
+            )
+            session.add(provider)
+
+        await session.commit()
+        await session.refresh(provider)
+        return ConnectedProviderResponse.model_validate(provider)
+
+    @classmethod
+    async def disconnect_provider(
+        cls,
+        session: AsyncSession,
+        provider_type: str,
+        candidate_id: Optional[str] = None,
+    ) -> bool:
+        stmt = select(ConnectedProvider).where(
+            ConnectedProvider.provider_type == provider_type.upper(),
+        )
+        if candidate_id:
+            stmt = stmt.where(ConnectedProvider.candidate_id == candidate_id)
+        existing = (await session.execute(stmt)).scalars().first()
+        if not existing:
+            return False
+        await session.delete(existing)
         await session.commit()
         return True

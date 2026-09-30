@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: "class",
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -8,13 +9,22 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        background: "#ffffff",
+        background: "var(--background)",
         surface: {
           50: "#fafafa",
           100: "#f4f4f5",
           200: "#e4e4e7",
           300: "#d4d4d8",
           400: "#a1a1aa",
+        },
+        dark: {
+          bg: "#0b0f17",
+          surface: "#111827",
+          elevated: "#182234",
+          border: "#1e293b",
+          borderHover: "#334155",
+          text: "#f8fafc",
+          muted: "#94a3b8",
         },
         border: "#e5e7eb",
         subtle: "#f8fafc",
@@ -57,10 +67,13 @@ module.exports = {
       boxShadow: {
         subtle: "0 1px 2px 0 rgba(0, 0, 0, 0.03)",
         card: "0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.02)",
-        dropdown: "0 4px 12px rgba(0, 0, 0, 0.06)",
-        elevated: "0 12px 24px -4px rgba(0, 0, 0, 0.06)",
+        dropdown: "0 4px 16px rgba(0, 0, 0, 0.08)",
+        elevated: "0 12px 28px -4px rgba(0, 0, 0, 0.08)",
+        darkCard: "0 1px 3px 0 rgba(0, 0, 0, 0.4)",
+        darkDropdown: "0 8px 24px -4px rgba(0, 0, 0, 0.6)",
       },
     },
   },
   plugins: [],
 };
+

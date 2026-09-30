@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Briefcase,
   ArrowRight,
@@ -27,6 +28,10 @@ import {
   FileCode,
   Sliders,
   ExternalLink,
+  Search,
+  Command,
+  Send,
+  Bell,
 } from "lucide-react";
 import {
   fetchDashboardSummaryApi,
@@ -39,13 +44,19 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { JobCard } from "@/components/ui/JobCard";
-import { EmptyState, LoadingState, ErrorState } from "@/components/ui/States";
+import { EmptyState, ErrorState } from "@/components/ui/States";
+import { DashboardSkeleton } from "@/components/ui/Skeleton";
+import CareerPipeline from "@/components/CareerPipeline";
+import TodayActions from "@/components/TodayActions";
+import { parseNaturalLanguageQuery } from "@/components/AiCommandBar";
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [data, setData] = useState<DashboardSummaryResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [commandQuery, setCommandQuery] = useState("");
 
   const loadDashboard = async () => {
     setLoading(true);
@@ -81,22 +92,22 @@ export default function DashboardPage() {
     }
   };
 
+  const handleCommandSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commandQuery.trim()) return;
+    const targetUrl = parseNaturalLanguageQuery(commandQuery);
+    router.push(targetUrl);
+  };
+
+  const handleExecuteQuery = (text: string) => {
+    const targetUrl = parseNaturalLanguageQuery(text);
+    router.push(targetUrl);
+  };
+
   const pCounts = data?.pipeline_counts;
 
-  // 10-step Career Workflow specified in prompt
-  const workflowSteps = [
-    { label: "Discover Jobs", href: "/jobs", count: pCounts?.jobs_count || 0 },
-    { label: "Analyze", href: "/jobs/analyze", count: data?.jobs_discovered.active_jobs || 0 },
-    { label: "Match", href: "/jobs", count: pCounts?.matched_count || 0 },
-    { label: "Tailor Resume", href: "/resumes", count: pCounts?.tailored_resumes_count || 0 },
-    { label: "Find Referrals", href: "/referrals", count: pCounts?.referrals_count || 0 },
-    { label: "Apply", href: "/applications", count: pCounts?.applied_count || 0 },
-    { label: "Prepare", href: "/interview", count: pCounts?.interviews_count || 0 },
-    { label: "Improve", href: "/insights", count: data?.skill_gaps?.length || 0 },
-  ];
-
   if (loading && !data) {
-    return <LoadingState message="Loading your career copilot workspace..." className="min-h-[50vh]" />;
+    return <DashboardSkeleton />;
   }
 
   if (error && !data) {
@@ -112,122 +123,167 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-12 pb-16">
-      {/* 1. Hero Experience */}
-      <section className="pt-6 sm:pt-10 pb-4 border-b border-slate-100">
+    <div className="space-y-12 sm:space-y-14 pb-16">
+      {/* 1. Hero Experience (AI Career Command Center) */}
+      <section className="pt-4 sm:pt-8 pb-6 border-b border-slate-100 dark:border-slate-800">
         <div className="max-w-4xl space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>AI Copilot Active • Zero Hallucination Mode</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold tracking-wide max-w-full">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span className="sm:hidden">AI Copilot Active</span>
+            <span className="hidden sm:inline">AI Copilot Active • Zero-Hallucination Mode • 11 Discovery Portals</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight text-slate-900 leading-tight">
-            CAREERPILOT
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.15] break-words">
+            Your AI copilot for the job search.
           </h1>
-          <p className="text-xl sm:text-2xl text-slate-500 font-normal tracking-tight">
-            Your AI copilot for the entire job search.
+
+          <p className="text-lg sm:text-xl text-slate-600 dark:text-slate-300 font-normal leading-relaxed max-w-3xl">
+            Find verified fresher opportunities, compile fact-grounded resumes, discover referrals, dispatch authorized outreach, and track applications.
           </p>
+
+          {/* Ask CareerPilot Natural Language Command Bar */}
+          <div className="pt-3 max-w-2xl">
+            <form onSubmit={handleCommandSubmit} className="relative flex items-center">
+              <Sparkles className="absolute left-4 w-5 h-5 text-blue-500 animate-pulse pointer-events-none" />
+              <input
+                type="text"
+                value={commandQuery}
+                onChange={(e) => setCommandQuery(e.target.value)}
+                placeholder="Ask CareerPilot anything... (e.g. 'Show me remote React fresher jobs')"
+                className="w-full pl-12 pr-24 py-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] text-sm text-slate-900 dark:text-white placeholder:text-slate-400 shadow-card focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              />
+              <div className="absolute right-2 flex items-center gap-1.5">
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="primary"
+                  className="text-xs px-3.5 py-1.5"
+                >
+                  Ask
+                </Button>
+              </div>
+            </form>
+
+            {/* Quick Suggestion Chips */}
+            <div className="flex flex-wrap items-center gap-2 mt-3 text-xs">
+              <span className="text-slate-400 dark:text-slate-500 text-[11px] font-medium">Try:</span>
+              <button
+                onClick={() => handleExecuteQuery("Show me remote React fresher jobs")}
+                className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-medium transition-colors"
+              >
+                Remote React fresher jobs
+              </button>
+              <button
+                onClick={() => handleExecuteQuery("Check my upcoming deadlines and OAs")}
+                className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-medium transition-colors"
+              >
+                Upcoming deadlines & OAs
+              </button>
+              <button
+                onClick={() => handleExecuteQuery("Outreach drafts awaiting review")}
+                className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-medium transition-colors"
+              >
+                Outreach drafts
+              </button>
+              <button
+                onClick={() => handleExecuteQuery("Job alerts")}
+                className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-medium transition-colors"
+              >
+                Job alerts
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Visual Workflow Stream */}
-        <div className="mt-8 pt-6 border-t border-slate-100/80">
-          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
-            Core Career Progression Flow
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
-            {workflowSteps.map((step, idx) => (
-              <Link
-                key={idx}
-                href={step.href}
-                className="group p-3 rounded-xl border border-slate-200/90 bg-white hover:border-slate-300 hover:shadow-subtle transition-all flex flex-col justify-between"
-              >
-                <div className="flex items-center justify-between text-slate-400 group-hover:text-slate-700">
-                  <span className="text-[11px] font-mono font-medium">0{idx + 1}</span>
-                  <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-                <div className="mt-3">
-                  <span className="text-xs font-semibold text-slate-900 block truncate group-hover:text-blue-600 transition-colors">
-                    {step.label}
-                  </span>
-                  <span className="text-[11px] text-slate-400 font-mono mt-0.5 block">
-                    {step.count} items
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
+        {/* 2. Interactive Progression Pipeline */}
+        <div className="mt-10 pt-6 border-t border-slate-100 dark:border-slate-800/80">
+          <CareerPipeline
+            counts={{
+              jobs: pCounts?.jobs_count || 0,
+              analyzed: data?.jobs_discovered?.active_jobs || 0,
+              matched: pCounts?.matched_count || 0,
+              tailored: pCounts?.tailored_resumes_count || 0,
+              referrals: pCounts?.referrals_count || 0,
+              applied: pCounts?.applied_count || 0,
+              interviews: pCounts?.interviews_count || 0,
+              gaps: data?.skill_gaps?.length || 0,
+            }}
+          />
         </div>
       </section>
 
-      {/* 2. Key Live Career Metrics */}
-      <section className="space-y-3">
+      {/* 3. "Today" Section: Proactive Next Actions */}
+      <TodayActions data={data} />
+
+      {/* 4. Core Career Command Metrics */}
+      <section className="space-y-3.5">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            Live Career Metrics
+          <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            Active Career Metrics
           </h2>
           <button
             onClick={loadDashboard}
-            className="text-xs text-slate-500 hover:text-slate-900 flex items-center gap-1 transition-colors"
+            className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5 transition-colors"
           >
-            <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
-            <span>Refresh</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <span>Sync</span>
           </button>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
           <Metric
-            label="Active Applications"
-            value={data?.applications.total_applications || 0}
-            subtext={`${data?.pipeline_counts.applied_count || 0} submitted`}
-            icon={<Kanban className="w-4 h-4 text-slate-400" />}
+            label="Active Opportunities"
+            value={data?.jobs_discovered?.total_jobs || 0}
+            subtext={`${data?.jobs_discovered?.active_jobs || 0} open positions`}
+            icon={<Briefcase className="w-4 h-4 text-slate-400 dark:text-slate-500" />}
           />
           <Metric
             label="Strong Matches"
-            value={data?.pipeline_counts.matched_count || 0}
+            value={data?.pipeline_counts?.matched_count || 0}
             subtext="Ready to apply & tailor"
-            icon={<Sparkles className="w-4 h-4 text-slate-400" />}
+            icon={<Sparkles className="w-4 h-4 text-blue-500" />}
           />
           <Metric
-            label="Interview Preps"
-            value={data?.pipeline_counts.interviews_count || 0}
-            subtext="Active mock sessions"
-            icon={<GraduationCap className="w-4 h-4 text-slate-400" />}
+            label="Tailored Resumes"
+            value={data?.pipeline_counts?.tailored_resumes_count || 0}
+            subtext={`${data?.pipeline_counts?.compiled_pdfs_count || 0} PDFs compiled`}
+            icon={<FileCode className="w-4 h-4 text-slate-400 dark:text-slate-500" />}
           />
           <Metric
-            label="Referral Opportunities"
-            value={data?.pipeline_counts.referrals_count || 0}
-            subtext={`${data?.pipeline_counts.pending_approvals_count || 0} review needed`}
-            icon={<Users2 className="w-4 h-4 text-slate-400" />}
+            label="Referrals"
+            value={data?.pipeline_counts?.referrals_count || 0}
+            subtext={`${data?.pipeline_counts?.pending_approvals_count || 0} review needed`}
+            icon={<Users2 className="w-4 h-4 text-slate-400 dark:text-slate-500" />}
           />
           <Metric
-            label="Resume Versions"
-            value={data?.pipeline_counts.tailored_resumes_count || 0}
-            subtext={`${data?.pipeline_counts.compiled_pdfs_count || 0} PDFs compiled`}
-            icon={<FileText className="w-4 h-4 text-slate-400" />}
+            label="Interviews"
+            value={data?.pipeline_counts?.interviews_count || 0}
+            subtext="Mock prep sessions"
+            icon={<GraduationCap className="w-4 h-4 text-slate-400 dark:text-slate-500" />}
           />
         </div>
       </section>
 
-      {/* 3. Human-in-the-Loop Action Required Banner */}
+      {/* 5. Human-in-the-Loop Action Required Banner */}
       {data?.outreach_requiring_approval && data.outreach_requiring_approval.length > 0 && (
-        <section className="rounded-2xl border border-amber-200/90 bg-amber-50/40 p-5 sm:p-6 space-y-4">
+        <section className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/20 p-5 sm:p-6 space-y-4">
           <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center space-x-2.5">
-              <div className="p-2 rounded-lg bg-amber-100 text-amber-800 shrink-0">
-                <AlertTriangle className="w-4 h-4" />
+            <div className="flex items-center space-x-3">
+              <div className="p-2.5 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-amber-900 tracking-tight">
+                <h3 className="text-base font-semibold text-amber-900 dark:text-amber-200 tracking-tight">
                   Human Approval Required ({data.outreach_requiring_approval.length} Outreach Drafts)
                 </h3>
-                <p className="text-xs text-amber-700 mt-0.5">
+                <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-300/80 mt-0.5 leading-relaxed">
                   CareerPilot never auto-sends messages. Review the AI-generated outreach drafts before copying or sending.
                 </p>
               </div>
             </div>
             <Link
               href="/outreach"
-              className="text-xs font-semibold text-amber-900 hover:underline shrink-0"
+              className="text-xs sm:text-sm font-semibold text-amber-900 dark:text-amber-200 hover:underline shrink-0"
             >
               View All Drafts →
             </Link>
@@ -237,24 +293,24 @@ export default function DashboardPage() {
             {data.outreach_requiring_approval.slice(0, 2).map((item) => (
               <div
                 key={item.id}
-                className="bg-white rounded-xl border border-amber-200/80 p-4 shadow-subtle flex flex-col justify-between"
+                className="bg-white dark:bg-[#111827] rounded-xl border border-amber-200/80 dark:border-amber-900/50 p-4 shadow-subtle dark:shadow-none flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-900">{item.contact_name}</span>
-                    <span className="text-[11px] font-mono text-slate-500 uppercase px-1.5 py-0.5 rounded bg-slate-100">
+                    <span className="font-semibold text-slate-900 dark:text-white">{item.contact_name}</span>
+                    <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 uppercase px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800">
                       {item.channel}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     {item.job_company} • {item.job_role || "Referral Outreach"}
                   </p>
-                  <p className="text-xs text-slate-700 mt-2.5 line-clamp-2 bg-slate-50 p-2 rounded-lg font-mono">
+                  <p className="text-xs text-slate-700 dark:text-slate-300 mt-2.5 line-clamp-2 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-lg font-mono leading-relaxed">
                     &quot;{item.body_snippet}&quot;
                   </p>
                 </div>
 
-                <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
                   <Button
                     size="sm"
                     variant="outline"
@@ -268,7 +324,7 @@ export default function DashboardPage() {
                     size="sm"
                     variant="primary"
                     onClick={() => handleApproveOutreach(item.id)}
-                    loading={approvingId === item.id}
+                    disabled={approvingId === item.id}
                     icon={<Check className="w-3.5 h-3.5" />}
                   >
                     Approve Draft
@@ -280,137 +336,126 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {/* 4. Strong Matches & Next Actions */}
+      {/* 6. High-Priority Matches Section */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900 tracking-tight">
-              Strong Job Matches
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+              High Match Discovered Roles
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Jobs with deterministic skill and project evidence alignment.
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+              Ranked with deterministic fact-grounding against your master resume.
             </p>
           </div>
           <Link
             href="/jobs"
-            className="text-xs font-semibold text-slate-700 hover:text-slate-900 flex items-center gap-1 transition-colors"
+            className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1 transition-colors"
           >
-            <span>Explore All Jobs</span>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            <span>Explore all 11 Sources</span>
+            <ChevronRight className="w-4 h-4 text-slate-400" />
           </Link>
         </div>
 
         {data?.strong_matches && data.strong_matches.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {data.strong_matches.slice(0, 6).map((job) => (
+            {data.strong_matches.slice(0, 3).map((job) => (
               <JobCard
                 key={job.job_id}
                 id={job.job_id}
                 role={job.role}
                 company={job.company}
-                location={job.location}
+                location={job.location || "Remote"}
+                employmentType={job.employment_type || "Full-time"}
                 matchScore={job.match_score}
-                requiredSkills={job.matched_skills}
-                missingSkills={job.missing_skills}
+                matchCategory={job.match_category}
+                actionLabel="Tailor Resume"
+                actionHref={`/resumes?job_id=${job.job_id}`}
               />
             ))}
           </div>
         ) : (
           <EmptyState
-            title="No Strong Matches Yet"
-            description="Upload your resume or discover new jobs to compute deterministic match scores."
-            actionText="Discover Jobs"
-            onAction={() => window.location.assign("/jobs")}
+            title="No high matches found yet"
+            description="Run a new job discovery scrape or tailor your skills in your candidate profile."
+            action={{
+              label: "Explore Discovered Jobs",
+              onClick: () => router.push("/jobs"),
+            }}
           />
         )}
       </section>
 
-      {/* 5. Split Section: Applications CRM & Interview Prep */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Active Applications */}
+      {/* 7. Fast Access: Tailored Resumes & Mock Interviews */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Tailored Resumes Studio Quick Link */}
         <Card className="flex flex-col justify-between">
           <div>
             <CardHeader
-              title="Application Pipeline"
-              subtitle="Active stages across your job search"
+              title="Tailored Resumes"
+              subtitle="LaTeX resumes compiled with factual evidence."
               action={
                 <Link
-                  href="/applications"
-                  className="text-xs font-semibold text-slate-700 hover:text-slate-900 flex items-center gap-1"
+                  href="/resumes"
+                  className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1 transition-colors"
                 >
-                  <span>Kanban Board</span>
+                  <span>Open Studio</span>
                   <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                 </Link>
               }
             />
 
-            <div className="mt-4 grid grid-cols-4 gap-2 text-center text-xs">
-              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80">
-                <span className="text-base font-semibold text-slate-900 block">
-                  {data?.applications.by_status?.SAVED || 0}
-                </span>
-                <span className="text-[11px] text-slate-500">Saved</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80">
-                <span className="text-base font-semibold text-slate-900 block">
-                  {data?.applications.by_status?.APPLIED || 0}
-                </span>
-                <span className="text-[11px] text-slate-500">Applied</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80">
-                <span className="text-base font-semibold text-slate-900 block">
-                  {data?.applications.by_status?.INTERVIEW || 0}
-                </span>
-                <span className="text-[11px] text-slate-500">Interviewing</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900">
-                <span className="text-base font-semibold block">
-                  {data?.applications.by_status?.OFFER || 0}
-                </span>
-                <span className="text-[11px] text-emerald-700">Offers</span>
-              </div>
-            </div>
-
-            {data?.applications.recent_applications && data.applications.recent_applications.length > 0 ? (
-              <div className="mt-4 divide-y divide-slate-100">
-                {data.applications.recent_applications.slice(0, 3).map((app) => (
-                  <div key={app.id} className="py-2.5 flex items-center justify-between text-xs">
+            {data?.tailored_resumes && data.tailored_resumes.length > 0 ? (
+              <div className="mt-4 space-y-3">
+                {data.tailored_resumes.slice(0, 3).map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-850 flex items-center justify-between text-xs sm:text-sm"
+                  >
                     <div>
-                      <span className="font-semibold text-slate-900">{app.role}</span>
-                      <p className="text-slate-500">{app.company}</p>
+                      <span className="font-semibold text-slate-900 dark:text-white">{item.job_role}</span>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{item.job_company} • v{item.version_number}</p>
                     </div>
-                    <Badge variant={app.status === "OFFER" ? "success" : "neutral"} size="sm">
-                      {app.status}
+                    <Badge variant={item.pdf_compiled ? "success" : "neutral"} size="sm">
+                      {item.pdf_compiled ? "PDF Ready" : "Draft"}
                     </Badge>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="mt-4 text-xs text-slate-400">No applications tracked yet.</p>
+              <div className="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 text-xs sm:text-sm text-slate-500 dark:text-slate-400 space-y-2">
+                <p>No tailored resumes created yet.</p>
+                <Link
+                  href="/resumes"
+                  className="inline-flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                >
+                  <span>Tailor resume for top match</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             )}
           </div>
 
-          <div className="mt-4 pt-3 border-t border-slate-100">
+          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <Link
-              href="/applications"
-              className="text-xs font-semibold text-slate-700 hover:text-slate-900 flex items-center justify-between"
+              href="/resumes"
+              className="text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 flex items-center justify-between"
             >
-              <span>Manage Application CRM</span>
+              <span>Manage all tailored resumes</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
         </Card>
 
-        {/* Interview Preparation */}
+        {/* Mock Interview Prep Quick Link */}
         <Card className="flex flex-col justify-between">
           <div>
             <CardHeader
-              title="Interview Readiness"
-              subtitle="Targeted questions and mock interview simulation"
+              title="Interview Co-Pilot"
+              subtitle="Role-tailored technical & behavioral mock prep."
               action={
                 <Link
                   href="/interview"
-                  className="text-xs font-semibold text-slate-700 hover:text-slate-900 flex items-center gap-1"
+                  className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1 transition-colors"
                 >
                   <span>Practice</span>
                   <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
@@ -423,15 +468,15 @@ export default function DashboardPage() {
                 {data.interviews.slice(0, 3).map((item) => (
                   <div
                     key={item.id}
-                    className="p-3 rounded-lg border border-slate-200/80 bg-slate-50/50 flex items-center justify-between text-xs"
+                    className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-850 flex items-center justify-between text-xs sm:text-sm"
                   >
                     <div>
-                      <span className="font-semibold text-slate-900">{item.role}</span>
-                      <p className="text-slate-500">{item.company} • {item.stage_or_status}</p>
+                      <span className="font-semibold text-slate-900 dark:text-white">{item.role}</span>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{item.company} • {item.stage_or_status}</p>
                     </div>
                     <Link
-                      href="/interview"
-                      className="px-2.5 py-1 rounded-md bg-slate-900 text-white font-medium text-[11px] hover:bg-slate-800 transition-colors"
+                      href={`/interview?job_id=${item.id}`}
+                      className="px-3 py-1.5 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
                     >
                       {item.score != null ? `${Math.round(item.score)}%` : "Start Mock"}
                     </Link>
@@ -439,23 +484,23 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <div className="mt-4 p-4 rounded-lg bg-slate-50 border border-slate-200/80 text-xs text-slate-500">
+              <div className="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 text-xs sm:text-sm text-slate-500 dark:text-slate-400 space-y-2">
                 <p>No active interview prep sessions.</p>
                 <Link
                   href="/interview"
-                  className="mt-2 inline-flex items-center gap-1 text-slate-900 font-semibold hover:underline"
+                  className="inline-flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-semibold hover:underline"
                 >
                   <span>Generate prep kit for a job</span>
-                  <ArrowRight className="w-3 h-3" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
             )}
           </div>
 
-          <div className="mt-4 pt-3 border-t border-slate-100">
+          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <Link
               href="/interview"
-              className="text-xs font-semibold text-slate-700 hover:text-slate-900 flex items-center justify-between"
+              className="text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 flex items-center justify-between"
             >
               <span>Launch Mock Interview Simulator</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -464,40 +509,40 @@ export default function DashboardPage() {
         </Card>
       </section>
 
-      {/* 6. Skill Gaps & Recommended Bridge Projects */}
+      {/* 8. Skill Gaps & Recommended Bridge Projects */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900 tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
               Market Skill Gaps & Project Evidence
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
               Verified through job market analysis and GitHub repository intelligence.
             </p>
           </div>
           <Link
             href="/insights"
-            className="text-xs font-semibold text-slate-700 hover:text-slate-900 flex items-center gap-1 transition-colors"
+            className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1 transition-colors"
           >
             <span>Full Insights & GitHub Analyzer</span>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            <ChevronRight className="w-4 h-4 text-slate-400" />
           </Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Skill Gaps */}
           <Card>
-            <h3 className="text-sm font-semibold text-slate-900 mb-3">Top In-Demand Gaps</h3>
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-3">Top In-Demand Gaps</h3>
             {data?.skill_gaps && data.skill_gaps.length > 0 ? (
               <div className="space-y-2">
                 {data.skill_gaps.slice(0, 4).map((gap, idx) => (
                   <div
                     key={idx}
-                    className="p-2.5 rounded-lg border border-slate-200/80 bg-slate-50/50 flex items-center justify-between text-xs"
+                    className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between text-xs sm:text-sm"
                   >
                     <div>
-                      <span className="font-semibold text-slate-900">{gap.skill}</span>
-                      <p className="text-slate-500">{gap.category}</p>
+                      <span className="font-semibold text-slate-900 dark:text-white">{gap.skill}</span>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{gap.category}</p>
                     </div>
                     <Badge variant={gap.priority === "HIGH" ? "error" : "warning"} size="sm">
                       {gap.priority} Priority
@@ -506,27 +551,27 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-slate-400">No critical skill gaps identified.</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">No critical skill gaps identified.</p>
             )}
           </Card>
 
           {/* Recommended Projects */}
           <Card>
-            <h3 className="text-sm font-semibold text-slate-900 mb-3">Targeted Portfolio Projects</h3>
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-3">Targeted Portfolio Projects</h3>
             {data?.recommended_projects && data.recommended_projects.length > 0 ? (
               <div className="space-y-2">
                 {data.recommended_projects.slice(0, 3).map((proj, idx) => (
                   <div
                     key={idx}
-                    className="p-2.5 rounded-lg border border-slate-200/80 bg-slate-50/50 text-xs space-y-1"
+                    className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-xs space-y-1.5"
                   >
-                    <span className="font-semibold text-slate-900 block">{proj.title}</span>
-                    <p className="text-slate-500 line-clamp-1">{proj.description}</p>
+                    <span className="font-semibold text-slate-900 dark:text-white block sm:text-sm">{proj.title}</span>
+                    <p className="text-slate-500 dark:text-slate-400 line-clamp-1 leading-relaxed">{proj.description}</p>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {(proj.focus_skills || []).slice(0, 3).map((sk, sidx) => (
                         <span
                           key={sidx}
-                          className="px-1.5 py-0.5 rounded bg-white border border-slate-200 text-[10px] text-slate-600 font-medium"
+                          className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-700 dark:text-slate-300 font-medium"
                         >
                           {sk}
                         </span>
@@ -536,7 +581,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-slate-400">No project recommendations generated yet.</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">No project recommendations generated yet.</p>
             )}
           </Card>
         </div>

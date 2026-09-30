@@ -86,8 +86,9 @@ flowchart TB
 | **Multi-Agent Orchestration** | LangGraph, LangChain, Structured Output Parsers |
 | **Database & Vector Store** | PostgreSQL 16 with `pgvector` extension (with automatic SQLite fallback for dev) |
 | **Document Processing** | Tectonic / TeXLive (Sandboxed LaTeX compilation), PyMuPDF / pdfplumber |
-| **Automation & Scheduling** | n8n Workflow Automation Engine |
-| **Testing & QA** | Pytest, Pytest-Asyncio (60 tests passed), Next.js Typecheck & Production Build |
+| **Automation & Scheduling** | n8n Workflow Automation Engine (Free Self-Hosted Community Edition) |
+| **Multi-Source Job Discovery** | Modular Adapters (LinkedIn, FreshersHunt, Indeed, Company Careers, Public Feeds) • [Discovery Architecture](docs/job-discovery.md) |
+| **Testing & QA** | Pytest, Pytest-Asyncio (73/73 tests passing), Next.js Typecheck & Production Build |
 
 ---
 
@@ -145,21 +146,55 @@ npm run dev
 ```
 Application will be available at: `http://localhost:3000`
 
-### 3. Production Build & Verification
+### 3. Local n8n Community Edition Setup (Automation Layer)
+
+CareerPilot uses the **free, self-hosted n8n Community Edition** locally (no cloud or trial license required).
 
 ```bash
-# Verify all 60 backend unit & integration tests
+# From repository root
+./scripts/start_n8n.sh
+```
+- n8n Web UI: `http://localhost:5678`
+- Health Endpoint: `http://localhost:5678/healthz`
+- Data Persistence: SQLite database at `data/n8n/.n8n/database.sqlite` (survives restarts)
+- Webhook Endpoint: `http://localhost:5678/webhook/careerpilot-test`
+- See [n8n Architecture & Setup Guide](docs/n8n.md) for full architecture and HITL safety policies.
+
+### 4. Running the Complete Stack (Frontend + Backend + n8n)
+
+```bash
+# Terminal 1: FastAPI Backend
+source .venv/bin/activate
+uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
+
+# Terminal 2: Next.js Frontend
+cd frontend && npm run start -- -H 127.0.0.1 -p 3000
+
+# Terminal 3: Local n8n Community Edition
+./scripts/start_n8n.sh
+```
+
+### 5. Testing & Verification
+
+```bash
+# Run all backend unit & integration tests (including n8n integration tests)
 .venv/bin/pytest backend/tests/ -v
 
-# Verify frontend production build
-cd frontend
-npm run build
+# Check n8n status from FastAPI
+curl -s http://localhost:8000/api/v1/n8n/status
+
+# Test FastAPI -> n8n webhook dispatch
+curl -s -X POST http://localhost:8000/api/v1/n8n/dispatch-test
+
+# Test n8n -> FastAPI health query
+curl -s http://localhost:5678/webhook/careerpilot-health-check
 ```
 
 ---
 
 ## 📚 Documentation Index
 
+- [n8n Architecture & Setup Guide](docs/n8n.md)
 - [Full Project Audit Report](docs/full-project-audit.md)
 - [Design System & UI Specification](docs/design-system.md)
 - [System Architecture](docs/architecture.md)

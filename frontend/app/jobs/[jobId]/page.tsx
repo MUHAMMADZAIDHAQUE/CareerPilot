@@ -40,10 +40,12 @@ import {
   createApplicationApi,
   fetchJobReferralsApi,
   fetchInterviewPrepApi,
+  discoverReferralsEngineApi,
   Job,
   MatchResponse,
   TailorResumeResponse,
   Referral,
+  ReferralDiscoveryResult,
   InterviewPreparation,
 } from "@/lib/api";
 import TailoredResumeStudio from "@/components/TailoredResumeStudio";
@@ -71,6 +73,29 @@ export default function JobMatchDetailPage() {
   // Referral state
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [referralsLoading, setReferralsLoading] = useState(false);
+  const [referralModalOpen, setReferralModalOpen] = useState(false);
+  const [discoveringReferrals, setDiscoveringReferrals] = useState(false);
+  const [referralResult, setReferralResult] = useState<ReferralDiscoveryResult | null>(null);
+  const [referralError, setReferralError] = useState<string | null>(null);
+
+  const handleDiscoverReferrals = async () => {
+    if (!job?.id) return;
+    setReferralModalOpen(true);
+    setDiscoveringReferrals(true);
+    setReferralError(null);
+    try {
+      const res = await discoverReferralsEngineApi(job.id);
+      if (res.data) {
+        setReferralResult(res.data);
+      } else {
+        setReferralError(res.error || "Failed to discover referrals");
+      }
+    } catch (err: any) {
+      setReferralError(err?.message || "Failed to discover referrals");
+    } finally {
+      setDiscoveringReferrals(false);
+    }
+  };
 
   // Interview prep preview
   const [interviewPrep, setInterviewPrep] = useState<InterviewPreparation | null>(null);
@@ -147,6 +172,9 @@ export default function JobMatchDetailPage() {
       const res = await tailorResumeApi(jobId);
       if (res.data) {
         setTailorData(res.data);
+        if (res.data.version?.id) {
+          router.push(`/resumes/${res.data.version.id}`);
+        }
       } else {
         setTailoringError(res.error || "Failed to generate tailored resume");
       }
@@ -220,16 +248,37 @@ export default function JobMatchDetailPage() {
       </div>
 
       {/* Main Job Hero Header */}
-      <div className="rounded-2xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-card flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <div className="space-y-3 max-w-3xl">
+      <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#111827] p-6 sm:p-8 shadow-card flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="space-y-3.5 max-w-3xl">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-slate-600 flex items-center gap-1.5">
+            <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
               <Building2 className="w-4 h-4 text-slate-400" />
               {job?.company}
             </span>
             {(job?.source_name || job?.source_type) && (
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 uppercase">
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase">
                 {job.source_name || job.source_type}
+              </span>
+            )}
+            {job?.is_fresher_eligible && (
+              <span
+                className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                title={job?.fresher_eligibility_reason || "Eligible for fresh graduates (0-3 years)"}
+              >
+                Fresher Eligible
+              </span>
+            )}
+            {job?.remote_status && (
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
+                {job.remote_status}
+              </span>
+            )}
+            {job?.source_references && job.source_references.length > 1 && (
+              <span
+                className="text-[11px] font-mono px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-900"
+                title={job.source_references.map((s) => `${s.source}: ${s.url || ""}`).join("\n")}
+              >
+                {job.source_references.length} Sources Aggregated
               </span>
             )}
             {job?.is_active === false && (
@@ -239,51 +288,152 @@ export default function JobMatchDetailPage() {
             )}
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-slate-900">
-            {job?.role}
-          </h1>
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
+              {job?.role}
+            </h1>
+            {job?.normalized_title && job.normalized_title.toLowerCase() !== job.role.toLowerCase() && (
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono">
+                Normalized Role: {job.normalized_title}
+              </p>
+            )}
+          </div>
 
-          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
+          <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             {job?.location && (
-              <span className="flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 text-slate-400" />
+              <span className="flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                 {job.location}
               </span>
             )}
             {job?.experience_requirement && (
-              <span className="flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-slate-400" />
+              <span className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                 {job.experience_requirement}
               </span>
             )}
             {job?.employment_type && (
-              <span className="flex items-center gap-1">
-                <Briefcase className="w-3.5 h-3.5 text-slate-400" />
+              <span className="flex items-center gap-1.5">
+                <Briefcase className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                 {job.employment_type}
               </span>
             )}
             {job?.salary && (
-              <span className="flex items-center gap-1 font-medium text-slate-700">
-                <DollarSign className="w-3.5 h-3.5 text-slate-400" />
+              <span className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
+                <DollarSign className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                 {job.salary}
               </span>
             )}
+            {job?.posted_at && (
+              <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
+                Posted: {job.posted_at}
+              </span>
+            )}
+            {job?.deadline && (
+              <span className="text-[11px] text-amber-600 dark:text-amber-400 font-mono">
+                Deadline: {job.deadline}
+              </span>
+            )}
+          </div>
+
+          {/* Quality & Scam Signal Detection Alert */}
+          {(((job?.scam_score ?? 0) > 0.4) || job?.is_scam_likely) && (
+            <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs sm:text-sm space-y-2">
+              <div className="flex items-center gap-2 font-bold">
+                <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span>Quality & Scam Signal Warning ({Math.round(((job?.scam_score || 0.5) * 100))}% Risk Detected)</span>
+              </div>
+              <p className="text-xs text-amber-800 dark:text-amber-300/90 leading-relaxed">
+                {job?.scam_reason || "Potential safety risk detected (unverified recruiter domain, suspicious contact method, or payment/training fee request). Never pay for job offers or share sensitive financial information."}
+              </p>
+            </div>
+          )}
+
+          {/* External Application Notice Banner */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 flex items-start gap-2.5">
+            <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <span className="font-semibold text-slate-900 dark:text-white block">
+                External Application Notice • Human Action Required
+              </span>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                CareerPilot adheres strictly to zero auto-apply invariants. Clicking &quot;VIEW JOB&quot; redirects you to the employer&apos;s verified job board or portal where application submission is completed by you.
+              </p>
+            </div>
+          </div>
+
+          {/* Section 15 Human Action Buttons */}
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            {(job?.application_url || job?.canonical_url || job?.official_company_url) && (
+              <a
+                href={(job.official_company_url || job.application_url || job.canonical_url)!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-subtle transition-colors"
+                id="action-view-job"
+              >
+                <span>VIEW JOB ON PORTAL</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+
+            {tailorData?.version?.id ? (
+              <Link
+                href={`/resumes/${tailorData.version.id}`}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-semibold shadow-subtle transition-colors"
+                id="action-prepare-resume"
+              >
+                <FileCode className="w-3.5 h-3.5" />
+                <span>PREPARE RESUME</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">
+                  READY
+                </span>
+              </Link>
+            ) : (
+              <button
+                onClick={handleGenerateTailoredResume}
+                disabled={tailoringLoading}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-semibold shadow-subtle transition-colors disabled:opacity-50"
+                id="action-prepare-resume"
+              >
+                {tailoringLoading ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>PREPARING RESUME...</span>
+                  </>
+                ) : (
+                  <>
+                    <FileCode className="w-3.5 h-3.5" />
+                    <span>PREPARE RESUME</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            <button
+              onClick={handleDiscoverReferrals}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold shadow-subtle transition-colors"
+              id="action-find-referrals"
+            >
+              <Users2 className="w-3.5 h-3.5" />
+              <span>FIND REFERRALS</span>
+            </button>
           </div>
         </div>
 
         {/* Deterministic Match Badge */}
         {score !== null && (
-          <div className="shrink-0 flex lg:flex-col items-center justify-between gap-2 p-4 rounded-xl bg-slate-50 border border-slate-200">
+          <div className="shrink-0 flex lg:flex-col items-center justify-between gap-2 p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
             <div className="text-center">
-              <span className="text-3xl sm:text-4xl font-semibold text-slate-900 tracking-tight block">
+              <span className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight block">
                 {score}%
               </span>
-              <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block mt-0.5">
-                Deterministic Fit
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mt-0.5">
+                {job?.match_category ? job.match_category.replace("_", " ") : "Deterministic Fit"}
               </span>
             </div>
 
-            <div className="text-[10px] text-emerald-700 font-medium px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-200">
+            <div className="text-[10px] text-emerald-700 dark:text-emerald-300 font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800">
               Grounded Evidence
             </div>
           </div>
@@ -291,29 +441,29 @@ export default function JobMatchDetailPage() {
       </div>
 
       {/* Quick Action Navigation Bar */}
-      <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-slate-200 bg-slate-50/70 text-xs">
-        <span className="font-semibold text-slate-400 uppercase tracking-wider px-2">
+      <div className="flex flex-wrap items-center gap-2 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-[#111827] text-xs">
+        <span className="font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-2">
           Jump To:
         </span>
-        <a href="#overview" className="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700 hover:border-slate-300 font-medium">
+        <a href="#overview" className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 font-medium transition-colors">
           01 Overview
         </a>
-        <a href="#why-match" className="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700 hover:border-slate-300 font-medium">
+        <a href="#why-match" className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 font-medium transition-colors">
           02 Why You Match
         </a>
-        <a href="#missing-skills" className="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700 hover:border-slate-300 font-medium">
+        <a href="#missing-skills" className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 font-medium transition-colors">
           03 Missing Skills
         </a>
-        <a href="#resume-alignment" className="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700 hover:border-slate-300 font-medium">
+        <a href="#resume-alignment" className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 font-medium transition-colors">
           04 Resume Alignment
         </a>
-        <a href="#referrals" className="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700 hover:border-slate-300 font-medium">
+        <a href="#referrals" className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 font-medium transition-colors">
           05 Referral Opportunities
         </a>
-        <a href="#interview" className="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700 hover:border-slate-300 font-medium">
+        <a href="#interview" className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 font-medium transition-colors">
           06 Interview Prep
         </a>
-        <a href="#application-status" className="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700 hover:border-slate-300 font-medium">
+        <a href="#application-status" className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 font-medium transition-colors">
           07 Application Status
         </a>
       </div>
@@ -700,6 +850,150 @@ export default function JobMatchDetailPage() {
           )}
         </Card>
       </section>
+
+      {/* Referral Discovery Progress Modal */}
+      {referralModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-lg w-full p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <Users2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  FINDING POTENTIAL REFERRALS
+                </h3>
+              </div>
+              <button
+                onClick={() => setReferralModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-mono"
+              >
+                ✕
+              </button>
+            </div>
+
+            {discoveringReferrals ? (
+              <div className="py-8 space-y-4 text-center">
+                <RefreshCw className="w-8 h-8 text-purple-600 animate-spin mx-auto" />
+                <div>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    Searching configured sources...
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Querying LinkedIn public index, company team pages, alumni networks, and GitHub...
+                  </p>
+                </div>
+                <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-400 max-w-xs mx-auto text-left pt-2">
+                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Company employees & leaders</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Public professional profiles</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>University alumni sources</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Open-source contributors</span>
+                  </div>
+                </div>
+              </div>
+            ) : referralError ? (
+              <div className="py-4 space-y-3">
+                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs">
+                  {referralError}
+                </div>
+                <Button size="sm" variant="outline" onClick={() => setReferralModalOpen(false)}>
+                  Close
+                </Button>
+              </div>
+            ) : referralResult ? (
+              <div className="space-y-4">
+                <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-4 space-y-2 border border-slate-200 dark:border-slate-700 text-xs">
+                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                    <span>Company:</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">{referralResult.company}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                    <span>Target Role:</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">{referralResult.role}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                    <span>Configured Sources Used:</span>
+                    <span className="font-mono text-purple-600 dark:text-purple-400">{referralResult.sources_used.length} sources</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800">
+                    <span className="text-[10px] text-purple-600 dark:text-purple-400 uppercase tracking-wider block font-semibold">
+                      Discovered
+                    </span>
+                    <span className="text-2xl font-bold text-purple-900 dark:text-purple-200">
+                      {referralResult.total_discovered}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block font-semibold">
+                      Verified
+                    </span>
+                    <span className="text-2xl font-bold text-emerald-900 dark:text-emerald-200">
+                      {referralResult.total_verified}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400 uppercase tracking-wider block font-semibold">
+                      Target
+                    </span>
+                    <span className="text-2xl font-bold text-blue-900 dark:text-blue-200">
+                      {referralResult.target_count}
+                    </span>
+                  </div>
+                </div>
+
+                {referralResult.target_reached ? (
+                  <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                    <span>Discovery target reached: {referralResult.total_verified}+ verified contacts found.</span>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
+                    <p className="font-semibold">Discovery Notice:</p>
+                    <p className="mt-0.5">{referralResult.notice || `Target not reached because fewer verified contacts were discoverable (${referralResult.total_verified}/50). Zero fake contacts fabricated.`}</p>
+                  </div>
+                )}
+
+                <div className="pt-2 flex flex-wrap items-center justify-between gap-3">
+                  <Button size="sm" variant="outline" onClick={() => setReferralModalOpen(false)}>
+                    Close
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/referrals?job_id=${job?.id || ""}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <Users2 className="w-3.5 h-3.5" />
+                      <span>SELECT CONTACTS</span>
+                    </Link>
+                    <Link
+                      href={`/outreach?job_id=${job?.id || ""}`}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold shadow-subtle transition-colors"
+                    >
+                      <span>PREPARE OUTREACH</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+
+

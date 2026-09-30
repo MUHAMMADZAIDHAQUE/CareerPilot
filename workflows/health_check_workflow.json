@@ -1,0 +1,91 @@
+{
+  "id": "CPHealthCheck001",
+  "name": "CareerPilot Health Check",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "e6a10001-1111-4000-8000-000000000001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [180, 240]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "careerpilot-health-check",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "e6a10001-1111-4000-8000-000000000002",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [180, 420],
+      "webhookId": "7d2b1f8e-4a6c-48c2-9e3b-1a5c8d7e9f0a"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://127.0.0.1:8000/health",
+        "options": {}
+      },
+      "id": "e6a10001-1111-4000-8000-000000000003",
+      "name": "CareerPilot /health Endpoint",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [440, 320]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"success\", \"workflow\": \"CareerPilot Health Check\", \"target\": \"http://127.0.0.1:8000/health\", \"backend_response\": $json } }}",
+        "options": {}
+      },
+      "id": "e6a10001-1111-4000-8000-000000000004",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [700, 320]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "CareerPilot /health Endpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "CareerPilot /health Endpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CareerPilot /health Endpoint": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

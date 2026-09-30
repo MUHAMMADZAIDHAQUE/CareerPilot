@@ -10,10 +10,39 @@ from backend.app.models.candidate import (
     ResumeTemplate,
 )
 from backend.app.models.resume import ResumeDocument, ResumeVersion, CompiledResumePDF
-from backend.app.models.job import Job, JobRequirement, JobPosting, MatchResult
-from backend.app.models.referral import Contact, Referral
-from backend.app.models.outreach import Outreach, OutreachStatus
-from backend.app.models.application import Application, ApplicationStatus
+from backend.app.models.job import (
+    Job,
+    JobRequirement,
+    JobPosting,
+    MatchResult,
+    JobAlert,
+    JobSource,
+    JobSourceRun,
+)
+from backend.app.models.referral import Contact, Referral, ReferralContact
+from backend.app.models.outreach import (
+    Outreach,
+    OutreachStatus,
+    OutreachDraft,
+    OutreachAuditEvent,
+    OutreachDraftStatus,
+    OutreachChannel,
+    OutreachLength,
+    OutreachDispatch,
+    OutreachDispatchStatus,
+)
+from backend.app.models.application import (
+    Application,
+    ApplicationStatus,
+    InboundResponse,
+    Assessment,
+    Deadline,
+    InterviewEvent,
+    Notification,
+    ConnectedProvider,
+    ApplicationQueueItem,
+    ApplicationQueue,
+)
 from backend.app.models.interview import (
     InterviewPreparation,
     InterviewSession,
@@ -21,8 +50,11 @@ from backend.app.models.interview import (
     InterviewSessionStatus,
 )
 from backend.app.models.github import GitHubAnalysis
+from backend.app.models.user import User, UserRole
 
 __all__ = [
+    "User",
+    "UserRole",
     "Candidate",
     "Education",
     "Experience",
@@ -39,15 +71,31 @@ __all__ = [
     "JobRequirement",
     "JobPosting",
     "MatchResult",
+    "JobAlert",
     "Contact",
     "Referral",
+    "ReferralContact",
     "Outreach",
     "OutreachStatus",
+    "OutreachDraft",
+    "OutreachAuditEvent",
+    "OutreachDraftStatus",
+    "OutreachChannel",
+    "OutreachLength",
+    "OutreachDispatch",
+    "OutreachDispatchStatus",
     "Application",
     "ApplicationStatus",
+    "InboundResponse",
+    "Assessment",
+    "Deadline",
+    "InterviewEvent",
+    "Notification",
+    "ConnectedProvider",
     "InterviewPreparation",
     "InterviewSession",
     "InterviewTurn",
     "InterviewSessionStatus",
     "GitHubAnalysis",
 ]
+

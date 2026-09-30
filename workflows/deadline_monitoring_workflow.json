@@ -1,0 +1,92 @@
+{
+  "id": "CPDeadlineMonitoring001",
+  "name": "CareerPilot Deadline Monitoring & Reminders",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f8c50001-1111-4000-8000-000000000001",
+      "name": "Manual Deadline Check",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [160, 240]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "f8c50001-1111-4000-8000-000000000002",
+      "name": "Every 4 Hours Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [160, 380]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://127.0.0.1:8000/api/v1/deadlines?status=PENDING",
+        "options": {}
+      },
+      "id": "f8c50001-1111-4000-8000-000000000003",
+      "name": "Fetch Pending Deadlines from FastAPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [440, 380]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "f8c50001-1111-4000-8000-000000000004",
+      "name": "Process Deadlines & Notify",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [720, 380]
+    }
+  ],
+  "connections": {
+    "Manual Deadline Check": {
+      "main": [
+        [
+          {
+            "node": "Fetch Pending Deadlines from FastAPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 4 Hours Schedule": {
+      "main": [
+        [
+          {
+            "node": "Fetch Pending Deadlines from FastAPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Pending Deadlines from FastAPI": {
+      "main": [
+        [
+          {
+            "node": "Process Deadlines & Notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

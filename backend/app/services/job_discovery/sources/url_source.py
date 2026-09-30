@@ -11,6 +11,14 @@ from backend.app.services.job_discovery.url_normalizer import (
     generate_job_dedup_hash,
     is_job_expired,
 )
+from backend.app.services.job_discovery.normalizer import (
+    normalize_job_title,
+    classify_fresher_and_experience,
+    normalize_location,
+    normalize_employment_type,
+    extract_truthful_salary,
+    extract_truthful_deadline,
+)
 from backend.app.core.logging import logger
 
 
@@ -63,13 +71,20 @@ class UrlJobSource(JobSource):
     Safely fetches permitted job postings, parses HTML or JSON-LD JobPosting metadata,
     and returns normalized raw job posting objects.
     """
+    source_id: str = "user_url"
     source_type: str = "url_import"
     source_name: str = "URL Direct Import"
+    display_name: str = "User URL"
+    access_mode: str = "USER_URL_REQUIRED"
 
     HEADERS = {
         "User-Agent": "CareerPilot-JobDiscovery/1.0 (+https://github.com/careerpilot-ai; job assistant)",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7",
         "Accept-Language": "en-US,en;q=0.9",
+    }
+
+    FORBIDDEN_HOSTS = {
+        "localhost", "127.0.0.1", "0.0.0.0", "::1", "169.254.169.254", "metadata.google.internal"
     }
 
     async def fetch_jobs(
@@ -82,11 +97,27 @@ class UrlJobSource(JobSource):
     ) -> List[RawJobPosting]:
         """
         Fetches a job posting directly from a user-supplied URL.
+        Guarded against SSRF attacks on internal/cloud metadata networks.
         """
         if not url:
             return []
 
         canon_url = normalize_job_url(url)
+        from urllib.parse import urlparse
+        parsed = urlparse(canon_url)
+        host = (parsed.hostname or "").lower()
+
+        # SSRF Protection
+        if (
+            host in self.FORBIDDEN_HOSTS
+            or host.startswith("10.")
+            or host.startswith("192.168.")
+            or (host.startswith("172.") and any(host.startswith(f"172.{i}.") for i in range(16, 32)))
+            or parsed.scheme not in ("http", "https")
+        ):
+            logger.warning(f"SSRF attempt blocked for host: {host}")
+            raise ValueError(f"Access to private, loopback, or metadata network address '{host}' is forbidden.")
+
         logger.info(f"Fetching job posting from URL: {canon_url}")
 
         timeout = httpx.Timeout(12.0, connect=5.0)
@@ -161,23 +192,37 @@ class UrlJobSource(JobSource):
         """
         canon_url = normalize_job_url(raw.url) if raw.url else None
         dedup_hash = generate_job_dedup_hash(raw.company, raw.role, raw.location)
+        norm_title, orig_title = normalize_job_title(raw.role)
+        norm_loc, remote_status = normalize_location(raw.location)
+        emp_type = normalize_employment_type(raw.employment_type, raw.description)
+        is_fresher, fresher_reason, exp_level = classify_fresher_and_experience(raw.role, raw.description)
+        salary = extract_truthful_salary(raw.salary, raw.description)
+        deadline = extract_truthful_deadline(raw.deadline, raw.description)
 
         return {
             "company": raw.company,
             "role": raw.role,
-            "location": raw.location or "Remote",
-            "employment_type": raw.employment_type or "Full-time",
+            "original_title": orig_title,
+            "normalized_title": norm_title,
+            "location": norm_loc,
+            "remote_status": remote_status,
+            "employment_type": emp_type,
+            "experience_level": exp_level,
+            "is_fresher_eligible": is_fresher,
+            "fresher_eligibility_reason": fresher_reason,
             "raw_description": raw.description,
             "application_url": canon_url,
             "canonical_url": canon_url,
-            "salary": raw.salary,
-            "deadline": raw.deadline,
+            "official_company_url": canon_url,
+            "salary": salary,
+            "deadline": deadline,
             "source_type": raw.source_type,
             "source_name": raw.source_name,
             "external_id": raw.external_id,
             "is_active": raw.is_active,
             "is_expired": raw.is_expired,
             "dedup_hash": dedup_hash,
+            "posted_at": getattr(raw, "posted_at", None),
         }
 
     def deduplicate_job(

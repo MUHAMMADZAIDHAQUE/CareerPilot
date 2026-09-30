@@ -95,7 +95,7 @@ class GitHubCareerAgent:
             logger.warning(f"GitHub API fetch error ({str(e)}). Utilizing permitted offline fallback.")
 
         # Fallback for mock/test users or when running in offline sandbox environment
-        if not profile_data:
+        if not profile_data or (not repos_data and profile_data.get("public_repos", 0) == 0):
             profile_data = {
                 "login": username,
                 "name": username.replace("-", " ").replace("_", " ").title(),

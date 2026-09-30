@@ -1,0 +1,92 @@
+{
+  "id": "CPOutreachDispatch001",
+  "name": "CareerPilot Authorized Outreach Dispatch",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f8c30001-1111-4000-8000-000000000001",
+      "name": "Manual Dispatch Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [160, 240]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "careerpilot-outreach-dispatch",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "f8c30001-1111-4000-8000-000000000002",
+      "name": "Outreach Dispatch Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [160, 380],
+      "webhookId": "5e1a2b3c-4d5e-6f7a-8b9c-0d1e2f3a4b5c"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/api/v1/outreach/bulk-send",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"draft_ids\": {{ $json.draft_ids || [] }},\n  \"confirm_send\": true,\n  \"provider\": \"AUTHORIZED_EMAIL_PROVIDER\"\n}",
+        "options": {}
+      },
+      "id": "f8c30001-1111-4000-8000-000000000003",
+      "name": "Call FastAPI Outreach Dispatch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [440, 380]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "f8c30001-1111-4000-8000-000000000004",
+      "name": "Dispatch Outcome Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [720, 380]
+    }
+  ],
+  "connections": {
+    "Manual Dispatch Trigger": {
+      "main": [
+        [
+          {
+            "node": "Call FastAPI Outreach Dispatch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outreach Dispatch Webhook": {
+      "main": [
+        [
+          {
+            "node": "Call FastAPI Outreach Dispatch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call FastAPI Outreach Dispatch": {
+      "main": [
+        [
+          {
+            "node": "Dispatch Outcome Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

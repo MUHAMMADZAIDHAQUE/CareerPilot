@@ -20,9 +20,16 @@ class Candidate(TimeStampedBase):
     github_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     portfolio_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
+    user_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
     # Dense semantic embedding for overall candidate profile
     embedding = mapped_column(Vector(settings.EMBEDDING_DIMENSION), nullable=True)
     metadata_json: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
+
+    # User Authentication Link
+    user = relationship("User", back_populates="candidate", lazy="joined")
 
     # Relationships
     education: Mapped[List["Education"]] = relationship(
@@ -63,6 +70,9 @@ class Candidate(TimeStampedBase):
     )
     referrals: Mapped[List["Referral"]] = relationship(
         "Referral", back_populates="candidate", cascade="all, delete-orphan", lazy="selectin"
+    )
+    referral_contacts: Mapped[List["ReferralContact"]] = relationship(
+        "ReferralContact", back_populates="candidate", cascade="all, delete-orphan", lazy="selectin"
     )
     outreach_messages = relationship(
         "Outreach", back_populates="candidate", cascade="all, delete-orphan", lazy="selectin"

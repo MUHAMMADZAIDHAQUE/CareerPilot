@@ -1,4 +1,4 @@
-from sqlalchemy import String, Text, ForeignKey, Integer, JSON
+from sqlalchemy import String, Text, ForeignKey, Integer, Float, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import Optional, Dict, Any, List
 from backend.app.db.base import TimeStampedBase
@@ -49,6 +49,34 @@ class ResumeVersion(TimeStampedBase):
     validation_details: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
     diff_summary: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
 
+    # Phase 17: Lifecycle Status, PDF & ATS Transparency
+    status: Mapped[str] = mapped_column(
+        String(50), default="REVIEW_REQUIRED", index=True, nullable=False
+    )  # "DRAFT" | "GENERATING" | "GENERATED" | "REVIEW_REQUIRED" | "APPROVED" | "REJECTED" | "ARCHIVED"
+    pdf_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    ats_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.0)
+    ats_details: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    generated_at: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    approved_at: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    rejection_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Backward-compatible property aliases
+    @property
+    def candidate_profile_id(self) -> str:
+        return self.candidate_id
+
+    @property
+    def master_resume_id(self) -> Optional[str]:
+        return self.source_resume_id
+
+    @property
+    def latex_source(self) -> str:
+        return self.latex_content
+
+    @property
+    def version(self) -> int:
+        return self.version_number
+
     # Relationships
     candidate: Mapped["Candidate"] = relationship("Candidate", back_populates="resume_versions")
     job: Mapped["Job"] = relationship("Job", back_populates="resume_versions")
@@ -91,5 +119,9 @@ class CompiledResumePDF(TimeStampedBase):
     resume_version: Mapped["ResumeVersion"] = relationship("ResumeVersion", back_populates="compiled_pdfs")
     candidate: Mapped["Candidate"] = relationship("Candidate")
     job: Mapped["Job"] = relationship("Job")
+
+
+# Conceptual entity alias requested in Phase 17
+TailoredResume = ResumeVersion
 
 

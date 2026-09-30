@@ -1,0 +1,120 @@
+{
+  "id": "CPResponseMonitoring001",
+  "name": "CareerPilot Inbound Response Monitoring & Assessment Ingestion",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f8c40001-1111-4000-8000-000000000001",
+      "name": "Manual Poll Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [160, 240]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "f8c40001-1111-4000-8000-000000000002",
+      "name": "Hourly Poll Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [160, 380]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "careerpilot-inbound-response",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "f8c40001-1111-4000-8000-000000000003",
+      "name": "Inbound Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [160, 520],
+      "webhookId": "6f2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/api/v1/responses",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"sender\": {{ $json.sender || \"recruiter@company.com\" }},\n  \"subject\": {{ $json.subject || \"Update on your application\" }},\n  \"body\": {{ $json.body || \"Thank you for applying.\" }},\n  \"channel\": {{ $json.channel || \"EMAIL\" }},\n  \"candidate_id\": {{ $json.candidate_id || null }},\n  \"job_id\": {{ $json.job_id || null }}\n}",
+        "options": {}
+      },
+      "id": "f8c40001-1111-4000-8000-000000000004",
+      "name": "Call FastAPI Response Ingestion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [440, 380]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "f8c40001-1111-4000-8000-000000000005",
+      "name": "Inbound Ingestion Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [720, 380]
+    }
+  ],
+  "connections": {
+    "Manual Poll Trigger": {
+      "main": [
+        [
+          {
+            "node": "Call FastAPI Response Ingestion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hourly Poll Schedule": {
+      "main": [
+        [
+          {
+            "node": "Call FastAPI Response Ingestion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inbound Webhook": {
+      "main": [
+        [
+          {
+            "node": "Call FastAPI Response Ingestion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call FastAPI Response Ingestion": {
+      "main": [
+        [
+          {
+            "node": "Inbound Ingestion Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -11,13 +11,26 @@ from backend.app.services.job_discovery.url_normalizer import (
 from backend.app.core.logging import logger
 
 
+from backend.app.services.job_discovery.normalizer import (
+    normalize_job_title,
+    classify_fresher_and_experience,
+    normalize_location,
+    normalize_employment_type,
+    extract_truthful_salary,
+    extract_truthful_deadline,
+)
+
+
 class PublicFeedJobSource(JobSource):
     """
     Source implementation for public authorized tech job feeds (e.g. RemoteOK, Arbeitnow)
     and authorized curated tech feeds. Never performs unauthorized scraping.
     """
+    source_id: str = "public_feed"
     source_type: str = "public_feed"
     source_name: str = "Public Authorized Feed"
+    display_name: str = "Public Feed"
+    access_mode: str = "PUBLIC_FEED"
 
     # Built-in verified sample feeds from authorized tech employers
     CURATED_PUBLIC_FEEDS = [
@@ -151,23 +164,37 @@ class PublicFeedJobSource(JobSource):
     def normalize_job(self, raw: RawJobPosting) -> Dict[str, Any]:
         canon_url = normalize_job_url(raw.url) if raw.url else None
         dedup_hash = generate_job_dedup_hash(raw.company, raw.role, raw.location)
+        norm_title, orig_title = normalize_job_title(raw.role)
+        norm_loc, remote_status = normalize_location(raw.location)
+        emp_type = normalize_employment_type(raw.employment_type, raw.description)
+        is_fresher, fresher_reason, exp_level = classify_fresher_and_experience(raw.role, raw.description)
+        salary = extract_truthful_salary(raw.salary, raw.description)
+        deadline = extract_truthful_deadline(raw.deadline, raw.description)
 
         return {
             "company": raw.company,
             "role": raw.role,
-            "location": raw.location or "Remote",
-            "employment_type": raw.employment_type or "Full-time",
+            "original_title": orig_title,
+            "normalized_title": norm_title,
+            "location": norm_loc,
+            "remote_status": remote_status,
+            "employment_type": emp_type,
+            "experience_level": exp_level,
+            "is_fresher_eligible": is_fresher,
+            "fresher_eligibility_reason": fresher_reason,
             "raw_description": raw.description,
             "application_url": canon_url,
             "canonical_url": canon_url,
-            "salary": raw.salary,
-            "deadline": raw.deadline,
+            "official_company_url": canon_url,
+            "salary": salary,
+            "deadline": deadline,
             "source_type": self.source_type,
             "source_name": raw.source_name,
             "external_id": raw.external_id,
             "is_active": raw.is_active,
             "is_expired": raw.is_expired,
             "dedup_hash": dedup_hash,
+            "posted_at": getattr(raw, "posted_at", None),
         }
 
     def deduplicate_job(

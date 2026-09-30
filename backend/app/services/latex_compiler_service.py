@@ -18,6 +18,7 @@ from reportlab.lib import colors
 
 from backend.app.core.config import settings
 from backend.app.core.logging import logger
+from backend.app.services.storage.service import get_storage_service
 from backend.app.models.resume import ResumeVersion, CompiledResumePDF
 from backend.app.models.candidate import Candidate
 from backend.app.models.job import Job
@@ -890,6 +891,18 @@ class LaTeXCompilerService:
                 )
                 if success and temp_pdf.exists():
                     shutil.copy(str(temp_pdf), target_file_path)
+                    try:
+                        storage = get_storage_service()
+                        pdf_data = temp_pdf.read_bytes()
+                        await storage.upload_file(
+                            user_id=version.candidate_id,
+                            content=pdf_data,
+                            filename=f"{pdf_id}_{filename}",
+                            content_type="application/pdf",
+                            subfolder="compiled_resumes",
+                        )
+                    except Exception as se:
+                        logger.warning(f"Persistent storage upload notification: {se}")
 
         duration_ms = int((time.time() - start_time) * 1000)
         file_size = os.path.getsize(target_file_path) if success and os.path.exists(target_file_path) else 0

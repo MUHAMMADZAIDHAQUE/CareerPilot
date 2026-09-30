@@ -3,7 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
 from pathlib import Path
 
-from backend.app.api.deps import get_db
+from backend.app.api.deps import get_db, get_optional_current_user, verify_resource_ownership
+from backend.app.models.user import User, UserRole
 from backend.app.services.resume_parser_service import ResumeParserService
 from backend.app.services.profile_service import ProfileService
 from backend.app.schemas.resume import (
@@ -16,6 +17,12 @@ from backend.app.schemas.tailoring import (
     TailorResumeRequest,
     TailorResumeResponse,
     ResumeVersionRead,
+    ApproveResumeRequest,
+    ApproveResumeResponse,
+    RejectResumeRequest,
+    RejectResumeResponse,
+    UpdateLatexRequest,
+    ResumeDiffResponse,
 )
 from backend.app.services.resume_tailor_service import ResumeTailorService
 from backend.app.schemas.candidate import CandidateRead
@@ -202,7 +209,11 @@ async def list_tailored_resume_versions(
     job_id: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> List[ResumeVersionRead]:
+    # Multi-user isolation: Candidate can only list their own resume versions
+    if isinstance(current_user, User) and current_user.role != UserRole.ADMIN and current_user.candidate:
+        candidate_id = current_user.candidate.id
     return await ResumeTailorService.list_versions(
         session=db,
         candidate_id=candidate_id,
@@ -219,6 +230,7 @@ async def list_tailored_resume_versions(
 async def get_tailored_resume_version(
     version_id: str,
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> ResumeVersionRead:
     record = await ResumeTailorService.get_version_by_id(
         session=db,
@@ -229,6 +241,7 @@ async def get_tailored_resume_version(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Resume version '{version_id}' not found",
         )
+    verify_resource_ownership(record.candidate_id, current_user)
     return record
 
 
@@ -355,6 +368,21 @@ async def get_resume_version_pdf(
         resume_version_id=resume_version_id,
     )
     if not pdf_record or not Path(pdf_record.file_path).exists():
+        # Auto-compile on the fly from persistent database LaTeX source if file is missing after restart
+        try:
+            comp_res = await LaTeXCompilerService.compile_latex(
+                session=db,
+                resume_version_id=resume_version_id,
+            )
+            if comp_res.compilation_status == "success":
+                pdf_record = await LaTeXCompilerService.get_latest_compiled_pdf(
+                    session=db,
+                    resume_version_id=resume_version_id,
+                )
+        except Exception as compile_err:
+            pass
+
+    if not pdf_record or not Path(pdf_record.file_path).exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No compiled PDF found for resume version '{resume_version_id}'. Please trigger compilation first.",
@@ -394,5 +422,249 @@ async def get_resume_version_pdf_singular(
     db: AsyncSession = Depends(get_db),
 ):
     return await get_resume_version_pdf(resume_version_id=resume_version_id, download=download, db=db)
+
+
+# =============================================================================
+# Phase 17 Tailored Resume Endpoints (/api/v1/resumes/tailored/...)
+# =============================================================================
+
+@resumes_router.post(
+    "/tailor",
+    response_model=TailorResumeResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Generate Tailored Resume from Request Body",
+    description="Initiates end-to-end tailoring pipeline using verified candidate facts and specified Job ID.",
+)
+async def tailor_resume_direct(
+    payload: TailorResumeRequest,
+    db: AsyncSession = Depends(get_db),
+) -> TailorResumeResponse:
+    if not payload.job_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Field 'job_id' is required in request payload.",
+        )
+    try:
+        return await ResumeTailorService.tailor_resume_for_job(
+            session=db,
+            job_id=payload.job_id,
+            payload=payload,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        logger.error(f"Tailoring resume failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Resume tailoring failure: {str(e)}",
+        )
+
+
+@resumes_router.get(
+    "/tailored",
+    response_model=List[ResumeVersionRead],
+    summary="List Tailored Resumes",
+    description="Retrieves tailored resume versions filtered optionally by candidate, job, or approval status.",
+)
+async def list_tailored_resumes(
+    candidate_id: Optional[str] = Query(None),
+    job_id: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> List[ResumeVersionRead]:
+    return await ResumeTailorService.list_versions(
+        session=db,
+        candidate_id=candidate_id,
+        job_id=job_id,
+        status=status,
+        limit=limit,
+    )
+
+
+@resumes_router.get(
+    "/tailored/{version_id}",
+    response_model=ResumeVersionRead,
+    summary="Get Specific Tailored Resume Version",
+)
+async def get_tailored_resume_by_id(
+    version_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> ResumeVersionRead:
+    record = await ResumeTailorService.get_version_by_id(session=db, version_id=version_id)
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tailored resume version '{version_id}' not found.",
+        )
+    return record
+
+
+@resumes_router.post(
+    "/tailored/{version_id}/generate",
+    response_model=TailorResumeResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Regenerate Tailored Resume Version",
+)
+async def regenerate_tailored_resume(
+    version_id: str,
+    payload: Optional[TailorResumeRequest] = None,
+    db: AsyncSession = Depends(get_db),
+) -> TailorResumeResponse:
+    existing = await ResumeTailorService.get_version_by_id(session=db, version_id=version_id)
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tailored resume version '{version_id}' not found.",
+        )
+    req = payload or TailorResumeRequest(
+        job_id=existing.job_id,
+        candidate_id=existing.candidate_id,
+        master_resume_id=existing.source_resume_id,
+    )
+    return await ResumeTailorService.tailor_resume_for_job(
+        session=db,
+        job_id=existing.job_id,
+        payload=req,
+    )
+
+
+@resumes_router.post(
+    "/tailored/{version_id}/compile",
+    response_model=CompiledPDFResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Compile Tailored Resume to PDF",
+)
+async def compile_tailored_resume(
+    version_id: str,
+    payload: Optional[CompilePDFRequest] = None,
+    db: AsyncSession = Depends(get_db),
+) -> CompiledPDFResponse:
+    return await compile_resume_version(resume_version_id=version_id, payload=payload, db=db)
+
+
+@resumes_router.get(
+    "/tailored/{version_id}/pdf",
+    summary="Download or Preview Tailored Resume PDF",
+)
+async def get_tailored_resume_pdf(
+    version_id: str,
+    download: bool = Query(False),
+    db: AsyncSession = Depends(get_db),
+):
+    return await get_resume_version_pdf(resume_version_id=version_id, download=download, db=db)
+
+
+@resumes_router.get(
+    "/tailored/{version_id}/diff",
+    response_model=ResumeDiffResponse,
+    summary="Get Categorized Diff between Master and Tailored Resume",
+)
+async def get_tailored_resume_diff(
+    version_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> ResumeDiffResponse:
+    try:
+        return await ResumeTailorService.get_categorized_diff(session=db, version_id=version_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error computing resume diff: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Diff generation failed: {str(e)}",
+        )
+
+
+@resumes_router.post(
+    "/tailored/{version_id}/approve",
+    response_model=ApproveResumeResponse,
+    summary="Approve Tailored Resume (Requires Explicit User Action)",
+)
+async def approve_tailored_resume(
+    version_id: str,
+    payload: Optional[ApproveResumeRequest] = None,
+    db: AsyncSession = Depends(get_db),
+) -> ApproveResumeResponse:
+    try:
+        notes = payload.notes if payload else None
+        version = await ResumeTailorService.approve_resume(session=db, version_id=version_id, notes=notes)
+        app_at = (
+            version.approved_at.isoformat()
+            if hasattr(version.approved_at, "isoformat")
+            else str(version.approved_at or "")
+        )
+        return ApproveResumeResponse(
+            success=True,
+            status="APPROVED",
+            approved_at=app_at,
+            message="Resume approved successfully. Ready for application (no application was auto-submitted).",
+            ready_for_application=True,
+            auto_applied=False,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error approving resume version: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Approval failed: {str(e)}",
+        )
+
+
+@resumes_router.post(
+    "/tailored/{version_id}/reject",
+    response_model=RejectResumeResponse,
+    summary="Reject Tailored Resume",
+)
+async def reject_tailored_resume(
+    version_id: str,
+    payload: Optional[RejectResumeRequest] = None,
+    db: AsyncSession = Depends(get_db),
+) -> RejectResumeResponse:
+    try:
+        reason = payload.reason if payload else None
+        version = await ResumeTailorService.reject_resume(session=db, version_id=version_id, reason=reason)
+        return RejectResumeResponse(
+            success=True,
+            status="REJECTED",
+            message=f"Resume version marked as REJECTED: {reason or 'No reason provided.'}",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error rejecting resume version: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Rejection failed: {str(e)}",
+        )
+
+
+@resumes_router.patch(
+    "/tailored/{version_id}/latex",
+    response_model=ResumeVersionRead,
+    summary="Update LaTeX Source with Manual User Edits",
+)
+async def update_tailored_resume_latex(
+    version_id: str,
+    payload: UpdateLatexRequest,
+    db: AsyncSession = Depends(get_db),
+) -> ResumeVersionRead:
+    try:
+        version = await ResumeTailorService.update_latex(
+            session=db,
+            version_id=version_id,
+            new_latex=payload.latex_content,
+        )
+        return ResumeVersionRead.model_validate(version)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error updating resume LaTeX: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"LaTeX update failed: {str(e)}",
+        )
+
 
 

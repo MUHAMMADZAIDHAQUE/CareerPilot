@@ -65,6 +65,13 @@ class MatchResponse(BaseModel):
     evidence: List[EvidenceItem] = Field(default_factory=list, description="Itemized factual evidence citations")
     explanation: str = Field(..., description="Honest, grounded assessment of strengths and gaps")
     weights_used: Dict[str, float] = Field(default_factory=dict, description="Weights applied during calculation")
+    match_category: str = Field("POSSIBLE_MATCH", description="HIGH_MATCH | GOOD_MATCH | POSSIBLE_MATCH | LOW_MATCH | INELIGIBLE")
+    eligibility_status: str = Field("ELIGIBLE", description="ELIGIBLE | INELIGIBLE | BORDERLINE")
+    fresher_eligible: bool = Field(False, description="Whether job is fresher eligible")
+    missing_skills: List[str] = Field(default_factory=list, description="Combined missing required and preferred skills")
+    match_explanation: Optional[str] = Field(None, description="Detailed transparent justification")
+    why_it_matches: List[str] = Field(default_factory=list, description="Bulleted reasons why candidate matches")
+    potential_gaps: List[str] = Field(default_factory=list, description="Bulleted potential gaps")
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

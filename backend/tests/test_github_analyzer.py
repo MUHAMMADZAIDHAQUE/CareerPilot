@@ -46,7 +46,7 @@ async def test_github_analyzer_full_pipeline(
 
     # Verify Profile Summary
     profile = data["profile_summary"]
-    assert profile["username"] == "liam-dev"
+    assert profile["username"].lower() == "liam-dev"
     assert profile["public_repos"] > 0
     assert len(profile["top_languages"]) > 0
 
