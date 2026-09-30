@@ -56,9 +56,15 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_async_migrations() -> None:
     """Run migrations in 'online' mode with async engine."""
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+    import re
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    db_url = settings.async_database_url
+    masked_url = re.sub(r":([^@]+)@", ":****@", db_url)
+    print(f"[Alembic] Connecting to database: {masked_url}")
+
+    connectable = create_async_engine(
+        db_url,
         poolclass=pool.NullPool,
     )
 

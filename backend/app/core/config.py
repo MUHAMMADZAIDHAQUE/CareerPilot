@@ -95,15 +95,26 @@ class Settings(BaseSettings):
 
     @property
     def async_database_url(self) -> str:
-        if self.DATABASE_URL:
-            url = self.DATABASE_URL
+        raw_url = self.DATABASE_URL or os.environ.get("DATABASE_URL")
+        if raw_url and raw_url.strip():
+            url = raw_url.strip()
             if url.startswith("postgresql://"):
                 url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
             elif url.startswith("postgres://"):
                 url = url.replace("postgres://", "postgresql+asyncpg://", 1)
             if "sslmode=require" in url:
                 url = url.replace("sslmode=require", "ssl=require")
+            elif "supabase.com" in url and "ssl=" not in url:
+                url += ("&ssl=require" if "?" in url else "?ssl=require")
             return url
+
+        is_cloud = bool(os.environ.get("RENDER") or os.environ.get("VERCEL") or self.ENVIRONMENT == "production")
+        if is_cloud:
+            raise RuntimeError(
+                "CRITICAL: DATABASE_URL is not configured in environment variables. "
+                "Please add DATABASE_URL in your cloud provider's Environment settings."
+            )
+
         return (
             f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@"
             f"{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
@@ -111,13 +122,24 @@ class Settings(BaseSettings):
 
     @property
     def sync_database_url(self) -> str:
-        if self.DATABASE_URL:
-            url = self.DATABASE_URL
+        raw_url = self.DATABASE_URL or os.environ.get("DATABASE_URL")
+        if raw_url and raw_url.strip():
+            url = raw_url.strip()
             if url.startswith("postgresql+asyncpg://"):
                 url = url.replace("postgresql+asyncpg://", "postgresql://", 1)
             elif url.startswith("postgres://"):
                 url = url.replace("postgres://", "postgresql://", 1)
+            if "ssl=require" in url and "sslmode=require" not in url:
+                url = url.replace("ssl=require", "sslmode=require")
             return url
+
+        is_cloud = bool(os.environ.get("RENDER") or os.environ.get("VERCEL") or self.ENVIRONMENT == "production")
+        if is_cloud:
+            raise RuntimeError(
+                "CRITICAL: DATABASE_URL is not configured in environment variables. "
+                "Please add DATABASE_URL in your cloud provider's Environment settings."
+            )
+
         return (
             f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@"
             f"{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
