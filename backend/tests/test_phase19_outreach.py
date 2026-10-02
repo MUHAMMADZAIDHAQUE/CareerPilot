@@ -15,7 +15,7 @@ import hashlib
 from pathlib import Path
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, event
 
 from backend.app.models.candidate import Candidate, Education, Project, Skill
 from backend.app.models.job import Job
@@ -591,3 +591,72 @@ async def test_phase18_referral_regression(db_session: AsyncSession):
     assert contact.duplicate_key == "nc:clarasimmons|datadog"
     assert len(contact.source_references) == 2
     assert contact.company_name == "Datadog"
+
+
+@pytest.mark.asyncio
+async def test_list_drafts_bounded_query_count_and_batch_enrichment(db_session: AsyncSession):
+    """
+    AUD-001 Regression Test:
+    Asserts that Phase19OutreachService.list_drafts() executes an O(1) bounded number of queries
+    (at most 4 queries) when fetching multiple drafts, eliminating serial N+1 query patterns.
+    """
+    import uuid
+    data = await setup_test_data(db_session)
+    job = data["job"]
+    candidate = data["candidate"]
+
+    # Create 5 additional contacts
+    contacts = [data["contact_selected"]]
+    for i in range(5):
+        c = ReferralContact(
+            id=str(uuid.uuid4()),
+            job_id=job.id,
+            name=f"Colleague {i}",
+            current_title=f"Staff Engineer {i}",
+            company="Datadog",
+            company_name="Datadog",
+            duplicate_key=f"colleague_{i}|datadog",
+            relevance_score=80.0 + i,
+            relationship_type="EMPLOYEE",
+        )
+        db_session.add(c)
+        contacts.append(c)
+    await db_session.flush()
+
+    # Create 6 drafts
+    for i, c in enumerate(contacts):
+        draft = OutreachDraft(
+            id=str(uuid.uuid4()),
+            candidate_id=candidate.id,
+            job_id=job.id,
+            referral_contact_id=c.id,
+            channel="LINKEDIN",
+            body=f"Draft message for {c.name}",
+            status=OutreachDraftStatus.REVIEW_REQUIRED,
+        )
+        db_session.add(draft)
+    await db_session.flush()
+
+    # Measure queries
+    engine = db_session.bind
+    query_count = 0
+    def count_queries(conn, cursor, statement, parameters, context, executemany):
+        nonlocal query_count
+        query_count += 1
+
+    event.listen(engine.sync_engine, "before_cursor_execute", count_queries)
+    try:
+        drafts = await Phase19OutreachService.list_drafts(db_session, job_id=job.id, limit=10)
+    finally:
+        event.remove(engine.sync_engine, "before_cursor_execute", count_queries)
+
+    assert len(drafts) >= 6
+    # O(1) bounded queries: exactly <= 4 SQL queries (drafts + audit_events + contacts batch + jobs batch)
+    assert query_count <= 4, f"Expected <= 4 queries for list_drafts, but observed {query_count} queries (N+1 regression)!"
+
+    # Verify data enrichment
+    for d in drafts:
+        assert d.job_title is not None
+        assert d.job_company == "Datadog"
+        assert d.contact_name is not None
+

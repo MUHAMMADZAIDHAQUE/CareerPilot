@@ -689,10 +689,8 @@ class Phase19OutreachService:
             except Exception as e:
                 logger.warning(f"Error generating draft for contact {cid}: {e}")
 
-        # Build response items
-        draft_responses: List[OutreachDraftResponse] = []
-        for d in drafts:
-            draft_responses.append(await cls.enrich_draft_response(session, d))
+        # Build response items using batch enrichment (eliminating N+1 queries)
+        draft_responses = await cls.enrich_draft_responses_batch(session, drafts)
 
         return OutreachDraftBulkGenerateResponse(
             job_id=payload.job_id,
@@ -705,29 +703,40 @@ class Phase19OutreachService:
         )
 
     @classmethod
-    async def enrich_draft_response(
+    def build_draft_response(
         cls,
-        session: AsyncSession,
         draft: OutreachDraft,
+        contact: Any = None,
+        job: Any = None,
     ) -> OutreachDraftResponse:
-        """Embeds contact and job context into response schema."""
-        contact_stmt = select(ReferralContact).where(ReferralContact.id == draft.referral_contact_id)
-        contact_res = await session.execute(contact_stmt)
-        contact = contact_res.scalar_one_or_none()
+        """Constructs OutreachDraftResponse from draft and optional related entities/rows."""
+        if contact is not None:
+            if isinstance(contact, dict):
+                c_name = contact.get("name")
+                c_title = contact.get("current_title") or contact.get("title")
+                c_company = contact.get("company_name") or contact.get("company")
+                c_rel = contact.get("relationship_type")
+                c_score = contact.get("relevance_score")
+                c_url = contact.get("profile_url")
+            else:
+                c_name = getattr(contact, "name", None)
+                c_title = getattr(contact, "current_title", None) or getattr(contact, "title", None)
+                c_company = getattr(contact, "company_name", None) or getattr(contact, "company", None)
+                c_rel = getattr(contact, "relationship_type", None)
+                c_score = getattr(contact, "relevance_score", None)
+                c_url = getattr(contact, "profile_url", None)
+        else:
+            c_name = c_title = c_company = c_rel = c_score = c_url = None
 
-        job_stmt = select(Job).where(Job.id == draft.job_id)
-        job_res = await session.execute(job_stmt)
-        job = job_res.scalar_one_or_none()
-
-        c_name = contact.name if contact else None
-        c_title = contact.current_title if contact else None
-        c_company = (contact.company_name or contact.company) if contact else None
-        c_rel = contact.relationship_type if contact else None
-        c_score = contact.relevance_score if contact else None
-        c_url = contact.profile_url if contact else None
-
-        j_title = (getattr(job, "role", None) or getattr(job, "title", None)) if job else None
-        j_company = (getattr(job, "company", None) or getattr(job, "company_name", None)) if job else None
+        if job is not None:
+            if isinstance(job, dict):
+                j_title = job.get("role") or job.get("title")
+                j_company = job.get("company") or job.get("company_name")
+            else:
+                j_title = getattr(job, "role", None) or getattr(job, "title", None)
+                j_company = getattr(job, "company", None) or getattr(job, "company_name", None)
+        else:
+            j_title = j_company = None
 
         return OutreachDraftResponse(
             id=draft.id,
@@ -764,6 +773,92 @@ class Phase19OutreachService:
         )
 
     @classmethod
+    async def enrich_draft_response(
+        cls,
+        session: AsyncSession,
+        draft: OutreachDraft,
+        contact: Any = None,
+        job: Any = None,
+    ) -> OutreachDraftResponse:
+        """Embeds contact and job context into response schema for a single draft."""
+        if contact is None and draft.referral_contact_id:
+            contact_stmt = select(
+                ReferralContact.id,
+                ReferralContact.name,
+                ReferralContact.current_title,
+                ReferralContact.company_name,
+                ReferralContact.company,
+                ReferralContact.relationship_type,
+                ReferralContact.relevance_score,
+                ReferralContact.profile_url,
+            ).where(ReferralContact.id == draft.referral_contact_id)
+            contact_res = await session.execute(contact_stmt)
+            contact = contact_res.first()
+
+        if job is None and draft.job_id:
+            job_stmt = select(
+                Job.id,
+                Job.role,
+                Job.company,
+            ).where(Job.id == draft.job_id)
+            job_res = await session.execute(job_stmt)
+            job = job_res.first()
+
+        return cls.build_draft_response(draft, contact=contact, job=job)
+
+    @classmethod
+    async def enrich_draft_responses_batch(
+        cls,
+        session: AsyncSession,
+        drafts: List[OutreachDraft],
+    ) -> List[OutreachDraftResponse]:
+        """
+        Batch loads related ReferralContact and Job entities to eliminate N+1 queries.
+        Executes at most 2 batched SQL queries for related data regardless of draft count.
+        """
+        if not drafts:
+            return []
+
+        contact_ids = {d.referral_contact_id for d in drafts if d.referral_contact_id}
+        job_ids = {d.job_id for d in drafts if d.job_id}
+
+        contacts_by_id: Dict[str, Any] = {}
+        if contact_ids:
+            contacts_stmt = select(
+                ReferralContact.id,
+                ReferralContact.name,
+                ReferralContact.current_title,
+                ReferralContact.company_name,
+                ReferralContact.company,
+                ReferralContact.relationship_type,
+                ReferralContact.relevance_score,
+                ReferralContact.profile_url,
+            ).where(ReferralContact.id.in_(contact_ids))
+            contacts_res = await session.execute(contacts_stmt)
+            for row in contacts_res.all():
+                contacts_by_id[row.id] = row
+
+        jobs_by_id: Dict[str, Any] = {}
+        if job_ids:
+            jobs_stmt = select(
+                Job.id,
+                Job.role,
+                Job.company,
+            ).where(Job.id.in_(job_ids))
+            jobs_res = await session.execute(jobs_stmt)
+            for row in jobs_res.all():
+                jobs_by_id[row.id] = row
+
+        return [
+            cls.build_draft_response(
+                d,
+                contact=contacts_by_id.get(d.referral_contact_id) if d.referral_contact_id else None,
+                job=jobs_by_id.get(d.job_id) if d.job_id else None,
+            )
+            for d in drafts
+        ]
+
+    @classmethod
     async def list_drafts(
         cls,
         session: AsyncSession,
@@ -775,7 +870,7 @@ class Phase19OutreachService:
         limit: int = 50,
         offset: int = 0,
     ) -> List[OutreachDraftResponse]:
-        """Lists outreach drafts with comprehensive filtering."""
+        """Lists outreach drafts with comprehensive filtering and batched related data fetching."""
         query = select(OutreachDraft).order_by(desc(OutreachDraft.updated_at))
 
         if job_id:
@@ -791,16 +886,13 @@ class Phase19OutreachService:
         res = await session.execute(query)
         drafts = res.scalars().all()
 
-        responses: List[OutreachDraftResponse] = []
-        for d in drafts:
-            # Filter by risk_level in-memory if requested
-            if risk_level and risk_level.upper() != "ALL":
-                draft_risk = (d.validation_results or {}).get("risk_level", "LOW")
-                if draft_risk.upper() != risk_level.upper():
-                    continue
-            responses.append(await cls.enrich_draft_response(session, d))
+        if risk_level and risk_level.upper() != "ALL":
+            drafts = [
+                d for d in drafts
+                if (d.validation_results or {}).get("risk_level", "LOW").upper() == risk_level.upper()
+            ]
 
-        return responses
+        return await cls.enrich_draft_responses_batch(session, drafts)
 
     @classmethod
     async def get_draft(
