@@ -240,6 +240,188 @@ export function clearAuthToken(): void {
   }
 }
 
+/**
+ * CP-006: Formats FastAPI 422 validation errors or arbitrary error objects
+ * into human-readable strings before returning to UI components.
+ * 
+ * Handles:
+ *  - string detail: "Invalid credentials"
+ *  - array detail: [{ loc: ["body", "email"], msg: "Field required", type: "missing" }]
+ *    -> "Field required: email"
+ *  - array detail: [{ loc: ["body", "email"], msg: "value is not a valid email", type: "value_error" }]
+ *    -> "email: value is not a valid email"
+ *  - object detail: { message: "...", msg: "..." }
+ */
+export function formatApiErrorDetail(detail: any): string {
+  if (detail === null || detail === undefined) return "";
+  if (typeof detail === "string") return detail;
+
+  if (Array.isArray(detail)) {
+    const formatted = detail.map((item) => {
+      if (typeof item === "string") return item;
+      if (typeof item === "object" && item !== null) {
+        const locParts = Array.isArray(item.loc)
+          ? item.loc.filter((p: any) => p !== "body" && p !== "query" && p !== "path")
+          : [];
+        const field = locParts.length > 0 ? locParts.join(".") : "";
+        const rawMsg = item.msg || item.message || item.type || "Validation error";
+
+        // Handle "Field required" / missing field case:
+        if (
+          String(rawMsg).toLowerCase() === "field required" ||
+          item.type === "missing" ||
+          item.type === "value_error.missing"
+        ) {
+          return field ? `Field required: ${field}` : "Field required";
+        }
+
+        // Handle standard field message e.g. "email: value is not a valid email"
+        if (field) {
+          return `${field}: ${rawMsg}`;
+        }
+        return String(rawMsg);
+      }
+      return String(item);
+    });
+
+    return formatted.filter(Boolean).join("; ");
+  }
+
+  if (typeof detail === "object") {
+    if (typeof detail.msg === "string") return detail.msg;
+    if (typeof detail.message === "string") return detail.message;
+    if (typeof detail.error === "string") return detail.error;
+    try {
+      return JSON.stringify(detail);
+    } catch {
+      return "An unexpected error occurred";
+    }
+  }
+
+  return String(detail);
+}
+
+export function parseApiError(err: any, fallbackMessage: string = "Request failed"): string {
+  if (!err) return fallbackMessage;
+  if (typeof err === "string") return err;
+  if (err.detail !== undefined) {
+    const formatted = formatApiErrorDetail(err.detail);
+    if (formatted) return formatted;
+  }
+  if (typeof err.message === "string") return err.message;
+  if (typeof err.error === "string") return err.error;
+  return fallbackMessage;
+}
+
+const PUBLIC_PATH_PREFIXES = [
+  "/login",
+  "/register",
+  "/jobs",
+  "/health",
+];
+
+function isPathPublic(pathname: string): boolean {
+  if (pathname === "/") return true;
+  for (const prefix of PUBLIC_PATH_PREFIXES) {
+    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+let isRedirectingToLogin = false;
+
+/**
+ * CP-005: Centralized handling for HTTP 401 responses.
+ * When an authenticated API request returns 401:
+ * 1. Clear careerpilot_token
+ * 2. Clear careerpilot_user
+ * 3. Notify AuthContext/session state
+ * 4. Redirect user to /login when appropriate (excluding login/register & public routes)
+ */
+export function handleGlobal401(requestUrl?: string): void {
+  if (typeof window === "undefined") return;
+
+  // 1. Do not interfere with login, token, or registration endpoints
+  if (requestUrl) {
+    const isLoginEndpoint =
+      requestUrl.includes("/auth/login") ||
+      requestUrl.includes("/auth/token") ||
+      requestUrl.includes("/auth/register");
+    if (isLoginEndpoint) {
+      return;
+    }
+  }
+
+  // 2. Clear stored auth credentials
+  clearAuthToken();
+
+  // 3. Notify AuthContext/session state
+  window.dispatchEvent(new CustomEvent("careerpilot:unauthorized"));
+
+  // 4. Redirect user to /login when appropriate
+  const currentPath = window.location.pathname;
+
+  // Never redirect if already on login or register (avoids loops)
+  if (currentPath === "/login" || currentPath === "/register") {
+    return;
+  }
+
+  // If on a public route, token is cleared & AuthContext notified, but do not force redirect
+  if (isPathPublic(currentPath)) {
+    return;
+  }
+
+  // For protected routes, redirect to /login
+  if (isRedirectingToLogin) return;
+  isRedirectingToLogin = true;
+
+  const target = `/login?redirect=${encodeURIComponent(currentPath + window.location.search)}`;
+  window.location.href = target;
+}
+
+// Client-side interceptor initialization
+if (typeof window !== "undefined") {
+  // CP-006: Intercept Response.prototype.json to normalize FastAPI error responses
+  if (typeof Response !== "undefined" && !(Response.prototype as any).__cp_normalized) {
+    const origJson = Response.prototype.json;
+    Response.prototype.json = async function () {
+      const data = await origJson.call(this);
+      if (data && typeof data === "object") {
+        if (data.detail !== undefined) {
+          data.detail = formatApiErrorDetail(data.detail);
+        }
+        if (data.message !== undefined && typeof data.message !== "string") {
+          data.message = formatApiErrorDetail(data.message);
+        }
+      }
+      return data;
+    };
+    (Response.prototype as any).__cp_normalized = true;
+  }
+
+  // CP-005: Intercept window.fetch for centralized 401 handling
+  if (typeof window.fetch !== "undefined" && !(window.fetch as any).__cp_interceptor) {
+    const origFetch = window.fetch;
+    const interceptedFetch = async function (input: RequestInfo | URL, init?: RequestInit) {
+      const res = await origFetch(input, init);
+      if (res.status === 401) {
+        const urlStr =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+            ? input.toString()
+            : (input as Request).url;
+        handleGlobal401(urlStr);
+      }
+      return res;
+    };
+    (interceptedFetch as any).__cp_interceptor = true;
+    window.fetch = interceptedFetch;
+  }
+}
+
 export function getCurrentCandidateId(): string | null {
   if (typeof window === "undefined") return null;
   try {
@@ -1168,10 +1350,16 @@ export async function tailorResumeApi(
 ): Promise<ApiFetchResult<TailorResumeResponse>> {
   const startTime = performance.now();
   try {
+    const reqBody: any = { ...(payload || {}) };
+    if (!reqBody.candidate_id) {
+      const currentCandId = getCurrentCandidateId();
+      if (currentCandId) reqBody.candidate_id = currentCandId;
+    }
+
     const res = await fetch(`${BASE_HOST}/api/resumes/tailor/${encodeURIComponent(jobId)}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload || {}),
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(reqBody),
     });
     const latencyMs = Math.round(performance.now() - startTime);
 
@@ -1836,7 +2024,7 @@ export interface ReferralSourceStatusResponse {
 export async function discoverReferralsEngineApi(
   jobId: string,
   candidateId?: string,
-  targetCount = 50,
+  targetCount = 100,
   minScore = 0.0,
   sources?: string[]
 ): Promise<ApiFetchResult<ReferralDiscoveryResult>> {
@@ -1844,7 +2032,7 @@ export async function discoverReferralsEngineApi(
   try {
     const res = await fetch(`${BASE_HOST}/api/referrals/discover`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({
         job_id: jobId,
         candidate_id: candidateId,
@@ -1876,7 +2064,7 @@ export async function fetchDiscoveredReferralsForJobApi(
     const query = candidateId ? `?candidate_id=${encodeURIComponent(candidateId)}` : "";
     const res = await fetch(`${BASE_HOST}/api/referrals/job/${encodeURIComponent(jobId)}${query}`, {
       cache: "no-store",
-      headers: { "Accept": "application/json" },
+      headers: getAuthHeaders({ "Accept": "application/json" }),
     });
     const latencyMs = Math.round(performance.now() - startTime);
 
@@ -3361,10 +3549,10 @@ export async function generateOutreachDraftApi(payload: {
   try {
     const res = await fetch(`${BASE_HOST}/api/v1/outreach/generate`, {
       method: "POST",
-      headers: {
+      headers: getAuthHeaders({
         "Content-Type": "application/json",
         "Accept": "application/json",
-      },
+      }),
       body: JSON.stringify(payload),
     });
     const latencyMs = Math.round(performance.now() - startTime);
@@ -3392,10 +3580,10 @@ export async function bulkGenerateOutreachDraftsApi(payload: {
   try {
     const res = await fetch(`${BASE_HOST}/api/v1/outreach/bulk-generate`, {
       method: "POST",
-      headers: {
+      headers: getAuthHeaders({
         "Content-Type": "application/json",
         "Accept": "application/json",
-      },
+      }),
       body: JSON.stringify(payload),
     });
     const latencyMs = Math.round(performance.now() - startTime);

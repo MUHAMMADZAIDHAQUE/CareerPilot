@@ -1,19 +1,36 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LogIn, Sparkles, Shield, User, AlertCircle, ArrowRight } from "lucide-react";
+import { LogIn, AlertCircle, ArrowRight } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { user, isAdmin, loading: authLoading, login } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // If user is already authenticated, redirect based on verified role
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (isAdmin) {
+        router.replace("/admin");
+      } else {
+        const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+        const redirectParam = urlParams?.get("redirect");
+        if (redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("/login") && !redirectParam.startsWith("/admin")) {
+          router.replace(redirectParam);
+        } else {
+          router.replace("/");
+        }
+      }
+    }
+  }, [authLoading, user, isAdmin, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,20 +45,21 @@ export default function LoginPage() {
     setLoading(false);
 
     if (res.success) {
-      if (email.toLowerCase().includes("admin")) {
+      const userRole = res.user?.role?.toUpperCase();
+      if (userRole === "ADMIN") {
         router.push("/admin");
       } else {
-        router.push("/");
+        const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+        const redirectParam = urlParams?.get("redirect");
+        if (redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("/login") && !redirectParam.startsWith("/admin")) {
+          router.push(redirectParam);
+        } else {
+          router.push("/");
+        }
       }
     } else {
       setError(res.error || "Invalid credentials.");
     }
-  };
-
-  const handleQuickFill = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    setError(null);
   };
 
   return (
@@ -61,31 +79,6 @@ export default function LoginPage() {
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
             Sign in to access your tailored resumes, job matches, and pipeline.
           </p>
-        </div>
-
-        {/* Demo Fast Login Buttons */}
-        <div className="space-y-2 pt-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 text-center">
-            Instant Demo Sign-In
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleQuickFill("admin@careerpilot.ai", "Admin@CareerPilot2026!")}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
-            >
-              <Shield className="w-3.5 h-3.5" />
-              <span>Admin Demo</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickFill("alex.chen@example.com", "Candidate@2026!")}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-            >
-              <User className="w-3.5 h-3.5" />
-              <span>Candidate Demo</span>
-            </button>
-          </div>
         </div>
 
         {error && (

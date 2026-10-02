@@ -62,6 +62,8 @@ data/chrome-user-dir/
 scratch/
 generated/resumes/*.pdf
 !generated/resumes/.gitkeep
+backend/data/
+backend/generated/
 
 # OS / IDE
 .DS_Store

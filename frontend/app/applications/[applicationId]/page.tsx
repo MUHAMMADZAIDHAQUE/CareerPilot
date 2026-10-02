@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { LoadingState, ErrorState } from "@/components/ui/States";
+import { getSafeExternalJobUrl } from "@/lib/utils";
 
 const ALL_16_STATUSES = [
   "DISCOVERED",
@@ -206,17 +207,20 @@ export default function ApplicationDetailPage() {
             </select>
           </div>
 
-          {(job?.application_url || job?.canonical_url) && (
-            <a
-              href={(job.official_company_url || job.application_url || job.canonical_url)!}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-colors mt-4 sm:mt-0"
-            >
-              <span>Open Posting</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          )}
+          {(() => {
+            const safeUrl = getSafeExternalJobUrl(job);
+            return safeUrl ? (
+              <a
+                href={safeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-colors mt-4 sm:mt-0"
+              >
+                <span>Open Posting</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            ) : null;
+          })()}
         </div>
       </div>
 
@@ -268,17 +272,20 @@ export default function ApplicationDetailPage() {
               <p className="text-xs text-slate-500 leading-relaxed">
                 Notice: Applications are submitted directly on the employer&apos;s verified careers portal. CareerPilot prepares and validates all materials, but does not perform automated submissions without candidate oversight.
               </p>
-              {(job?.application_url || job?.canonical_url) && (
-                <a
-                  href={(job.official_company_url || job.application_url || job.canonical_url)!}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-colors"
-                >
-                  <span>Submit on Career Portal</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              )}
+              {(() => {
+                const safeUrl = getSafeExternalJobUrl(job);
+                return safeUrl ? (
+                  <a
+                    href={safeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-colors"
+                  >
+                    <span>Submit on Career Portal</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                ) : null;
+              })()}
             </Card>
 
             <Card className="p-5 space-y-3">

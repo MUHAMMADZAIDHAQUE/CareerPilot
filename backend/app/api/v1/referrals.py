@@ -43,13 +43,17 @@ router = APIRouter(tags=["Referral Discovery Engine"])
 async def discover_referrals_engine(
     payload: ReferralDiscoveryRequest,
     session: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     try:
+        candidate_id = payload.candidate_id
+        if not candidate_id and current_user and current_user.candidate:
+            candidate_id = current_user.candidate.id
         return await Phase18DiscoveryService.discover_referrals(
             session=session,
             job_id=payload.job_id,
-            candidate_id=payload.candidate_id,
-            target_count=payload.target_count,
+            candidate_id=candidate_id,
+            target_count=payload.target_count or 100,
             min_score=payload.min_score or 0.0,
             sources_filter=payload.sources,
         )
@@ -110,8 +114,11 @@ async def get_job_referrals_discovery(
     job_id: str,
     candidate_id: Optional[str] = Query(None, description="Optional Candidate ID"),
     session: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     try:
+        if not candidate_id and current_user and current_user.candidate:
+            candidate_id = current_user.candidate.id
         # Check if contacts already exist for this job
         existing = await Phase18DiscoveryService.list_referral_contacts(
             session=session,

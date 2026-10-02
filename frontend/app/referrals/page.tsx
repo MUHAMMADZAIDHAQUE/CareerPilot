@@ -34,6 +34,7 @@ import {
   bulkSelectReferralContactsApi,
   bulkGenerateOutreachDraftsApi,
   fetchJobsApi,
+  fetchJobApi,
   ReferralContact,
   Job,
   ReferralDiscoveryResult,
@@ -72,10 +73,20 @@ function ReferralDashboardContent() {
     async function loadJobs() {
       try {
         const jobsRes = await fetchJobsApi({ limit: 50 });
-        if (jobsRes.data && jobsRes.data.length > 0) {
-          setJobs(jobsRes.data);
-          if (!selectedJobId) {
-            setSelectedJobId(jobsRes.data[0].id);
+        let loadedJobs: Job[] = jobsRes.data || [];
+
+        // If arrived with a specific target job not in the initial page, fetch it directly
+        if (initialJobId && !loadedJobs.some((j) => j.id === initialJobId)) {
+          const singleJobRes = await fetchJobApi(initialJobId);
+          if (singleJobRes.data) {
+            loadedJobs = [singleJobRes.data, ...loadedJobs];
+          }
+        }
+
+        if (loadedJobs.length > 0) {
+          setJobs(loadedJobs);
+          if (!selectedJobId || (initialJobId && selectedJobId !== initialJobId)) {
+            setSelectedJobId(initialJobId || loadedJobs[0].id);
           }
         }
       } catch (err: any) {
@@ -83,7 +94,7 @@ function ReferralDashboardContent() {
       }
     }
     loadJobs();
-  }, []);
+  }, [initialJobId]);
 
   // Load referral discovery contacts for the selected job
   const loadReferrals = async (jobIdToLoad: string) => {
@@ -337,6 +348,13 @@ function ReferralDashboardContent() {
               <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
               <span>Re-run Discovery</span>
             </button>
+
+            {selectedJob && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-800 text-[11px] text-purple-700 dark:text-purple-300 font-medium">
+                <Building2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                <span>Target: <strong>{selectedJob.role}</strong> at <strong>{selectedJob.company}</strong></span>
+              </div>
+            )}
           </div>
         </div>
 

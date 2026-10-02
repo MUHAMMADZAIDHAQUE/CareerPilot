@@ -175,7 +175,14 @@ async def tailor_resume_for_job(
     job_id: str,
     payload: Optional[TailorResumeRequest] = None,
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> TailorResumeResponse:
+    if payload is None:
+        payload = TailorResumeRequest()
+    # Multi-user isolation: associate with authenticated user's candidate record
+    if isinstance(current_user, User) and current_user.role != UserRole.ADMIN and current_user.candidate:
+        payload.candidate_id = current_user.candidate.id
+
     try:
         return await ResumeTailorService.tailor_resume_for_job(
             session=db,
@@ -201,7 +208,11 @@ async def get_latest_tailored_resume(
     job_id: str,
     candidate_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> Optional[ResumeVersionRead]:
+    # Multi-user isolation: Candidate can only fetch their own tailored resume
+    if isinstance(current_user, User) and current_user.role != UserRole.ADMIN and current_user.candidate:
+        candidate_id = current_user.candidate.id
     record = await ResumeTailorService.get_latest_tailored_version(
         session=db,
         job_id=job_id,
@@ -277,8 +288,9 @@ async def tailor_resume_for_job_alias(
     job_id: str,
     payload: Optional[TailorResumeRequest] = None,
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> TailorResumeResponse:
-    return await tailor_resume_for_job(job_id=job_id, payload=payload, db=db)
+    return await tailor_resume_for_job(job_id=job_id, payload=payload, db=db, current_user=current_user)
 
 
 @resumes_router.get(
@@ -290,8 +302,9 @@ async def get_latest_tailored_resume_alias(
     job_id: str,
     candidate_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> Optional[ResumeVersionRead]:
-    return await get_latest_tailored_resume(job_id=job_id, candidate_id=candidate_id, db=db)
+    return await get_latest_tailored_resume(job_id=job_id, candidate_id=candidate_id, db=db, current_user=current_user)
 
 
 from fastapi.responses import FileResponse
@@ -454,12 +467,16 @@ async def get_resume_version_pdf_singular(
 async def tailor_resume_direct(
     payload: TailorResumeRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> TailorResumeResponse:
     if not payload.job_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Field 'job_id' is required in request payload.",
         )
+    # Multi-user isolation
+    if isinstance(current_user, User) and current_user.role != UserRole.ADMIN and current_user.candidate:
+        payload.candidate_id = current_user.candidate.id
     try:
         return await ResumeTailorService.tailor_resume_for_job(
             session=db,

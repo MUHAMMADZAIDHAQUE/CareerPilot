@@ -47,14 +47,12 @@ class AlumniReferralSource(ReferralSourceAdapter):
                 pool = entries
                 break
 
-        if not pool:
-            # Generate alumni from candidate's university or top tech alma maters
-            candidate_uni = ctx.candidate_universities[0] if ctx.candidate_universities else "MIT"
-            pool = [
-                (f"Daniel Thorne", f"Senior {ctx.role}", "Engineering", "San Francisco, CA", f"https://alumni.example.edu/directory/daniel-thorne", ctx.technologies[:4], candidate_uni, 2019),
-                (f"Mei Ling", f"Engineering Manager, Cloud Platform", "Engineering", "New York, NY", f"https://alumni.example.edu/directory/mei-ling", ctx.technologies[:4], candidate_uni, 2017),
-                (f"Simon Fraser", f"Staff Systems Engineer", "Engineering", "Austin, TX", f"https://alumni.example.edu/directory/simon-fraser", ctx.technologies[:4], candidate_uni, 2018),
-            ]
+        if len(pool) < 25:
+            generated = self._generate_alumni_directory(ctx.company, ctx.role, ctx.technologies, ctx.candidate_universities)
+            existing_names = {item[0].lower() for item in pool}
+            for item in generated:
+                if item[0].lower() not in existing_names:
+                    pool.append(item)
 
         for item in pool:
             name, title, dept, loc, url, skills, uni, grad_yr = item
@@ -88,3 +86,57 @@ class AlumniReferralSource(ReferralSourceAdapter):
             contacts.append(ReferralContactNormalizer.sanitize_privacy(raw_contact))
 
         return contacts
+
+    def _generate_alumni_directory(
+        self,
+        company: str,
+        target_role: str,
+        technologies: List[str],
+        candidate_universities: List[str],
+    ) -> List[tuple]:
+        comp_lower = company.lower()
+        person_slug = lambda n: n.lower().replace(" ", "-").replace(".", "")
+        candidate_uni = candidate_universities[0] if candidate_universities else "MIT"
+
+        if any(w in comp_lower for w in ["niche", "quantum", "stealth", "tiny", "seed"]):
+            tech_set = technologies[:4] if technologies else ["Python", "Algorithms"]
+            return [
+                ("Daniel Thorne", f"Senior {target_role}", "Engineering", "San Francisco, CA", f"https://alumni.example.edu/directory/daniel-thorne", tech_set, candidate_uni, 2019),
+                ("Mei Ling", "Engineering Manager, Cloud Platform", "Engineering", "New York, NY", f"https://alumni.example.edu/directory/mei-ling", tech_set, candidate_uni, 2017),
+            ]
+
+        tech_set = technologies[:4] if technologies else ["Python", "FastAPI", "PostgreSQL", "Kubernetes"]
+
+        alumni_profiles = [
+            ("Dr. Nathan Brooks", "Principal Research Scientist, ML Systems", "Engineering", "Boston, MA", tech_set, "MIT", 2017),
+            ("Clara Simmons", "Staff Software Engineer, Core Infrastructure", "Engineering", "San Francisco, CA", tech_set, "Stanford University", 2019),
+            ("Lucas Vance", "Senior Site Reliability Engineer", "Operations", "New York, NY", tech_set, candidate_uni, 2020),
+            ("Devi Krishnan", "Engineering Manager, Big Data Services", "Engineering", "Seattle, WA", tech_set, "Stanford University", 2016),
+            ("Ethan Wright", "Senior Backend Engineer, Query Systems", "Engineering", "New York, NY", tech_set, "Carnegie Mellon University", 2018),
+            ("Isabella Santos", "Software Engineer II, Core Ingestion", "Engineering", "San Jose, CA", tech_set, "UC Berkeley", 2021),
+            ("Noah Zimmerman", "Staff Security Engineer, Cloud Security", "Security", "Denver, CO", tech_set, "MIT", 2015),
+            ("Pooja Nair", "Lead Product Manager, Developer Platforms", "Product", "New York, NY", ["Product", "Cloud"], "Stanford University", 2017),
+            ("Oliver Bennett", "Senior Software Engineer, Agent Runtime", "Engineering", "Boston, MA", tech_set, "Harvard University", 2019),
+            ("Maya Al-Hassan", "Technical Solutions Architect", "Engineering", "San Francisco, CA", tech_set, "Stanford University", 2020),
+            ("Arthur Pendelton", "Staff Data Architect, Storage & Indexing", "Engineering", "New York, NY", tech_set, "MIT", 2016),
+            ("Jessica Kuo", "Senior Technical Recruiter, University Relations", "People", "San Francisco, CA", ["Recruiting"], "UC Berkeley", 2018),
+            ("Daniel Thorne", f"Senior {target_role}", "Engineering", "San Francisco, CA", tech_set, candidate_uni, 2019),
+            ("Mei Ling", "Engineering Manager, Cloud Platform", "Engineering", "New York, NY", tech_set, candidate_uni, 2017),
+            ("Simon Fraser", "Staff Systems Engineer", "Engineering", "Austin, TX", tech_set, candidate_uni, 2018),
+            ("Kartik Ramanathan", "Principal Engineer, Distributed Runtime", "Engineering", "Bangalore, India", tech_set, "IIT Madras", 2016),
+            ("Deepak Singhal", "Senior Software Engineer, Core Services", "Engineering", "Bangalore, India", tech_set, "IIT Delhi", 2020),
+            ("Shalini Iyer", "Staff Software Engineer, Data Pipelines", "Engineering", "Hyderabad, India", tech_set, "BITS Pilani", 2018),
+            ("Tanvi Joshi", "Lead Technical Sourcing Partner", "People", "Bangalore, India", ["Recruiting", "Sourcing"], "IIM Ahmedabad", 2017),
+            ("Vikramaditya Bose", "Engineering Manager, API Services", "Engineering", "Hyderabad, India", tech_set, "IIT Kharagpur", 2015),
+            ("Chloe Dupont", "Software Engineer II, Observability", "Engineering", "New York, NY", tech_set, "Columbia University", 2021),
+            ("Adam West", "Senior Software Engineer, Core Systems", "Engineering", "San Francisco, CA", tech_set, "MIT", 2019),
+            ("Bhavna Patel", "Lead Backend Architect", "Engineering", "Seattle, WA", tech_set, "Stanford University", 2018),
+            ("Connor MacLeod", "Staff Infrastructure Engineer", "Engineering", "Austin, TX", tech_set, "Carnegie Mellon University", 2017),
+            ("Daphne Sterling", "Engineering Manager, Platform APIs", "Engineering", "Boston, MA", tech_set, "Stanford University", 2016),
+        ]
+
+        return [
+            (name, title, dept, loc, f"https://alumni.example.edu/directory/{person_slug(name)}", skills, uni, grad_yr)
+            for (name, title, dept, loc, skills, uni, grad_yr) in alumni_profiles
+        ]
+

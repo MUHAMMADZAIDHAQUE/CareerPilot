@@ -92,6 +92,8 @@ def _sync_sqlite_columns_sync(connection):
     cursor.execute("PRAGMA table_info(match_results);")
     existing_match_cols = {col[1] for col in cursor.fetchall()}
     new_match_cols = [
+        ("structured_score", "FLOAT DEFAULT 0.0"),
+        ("total_score", "FLOAT DEFAULT 0.0"),
         ("match_category", "VARCHAR(50) DEFAULT 'POSSIBLE_MATCH'"),
         ("eligibility_status", "VARCHAR(50) DEFAULT 'ELIGIBLE'"),
         ("fresher_eligible", "BOOLEAN DEFAULT 0"),

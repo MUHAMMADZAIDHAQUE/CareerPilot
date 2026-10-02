@@ -36,8 +36,10 @@ import {
   rejectOutreachDraftApi,
   regenerateOutreachDraftApi,
   sendOutreachApi,
+  fetchConnectedProvidersApi,
   OutreachDraft,
   OutreachDispatch,
+  ConnectedProvider,
 } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -77,6 +79,7 @@ export default function OutreachReviewStudioPage() {
   const [sending, setSending] = useState(false);
   const [dispatchRecord, setDispatchRecord] = useState<OutreachDispatch | null>(null);
   const [copiedMessage, setCopiedMessage] = useState(false);
+  const [connectedProviders, setConnectedProviders] = useState<ConnectedProvider[]>([]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -88,13 +91,19 @@ export default function OutreachReviewStudioPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchOutreachDraftByIdApi(draftId);
+      const [res, provRes] = await Promise.all([
+        fetchOutreachDraftByIdApi(draftId),
+        fetchConnectedProvidersApi(),
+      ]);
       if (res.data) {
         setDraft(res.data);
         setSubjectText(res.data.subject || "");
         setBodyText(res.data.body || "");
       } else {
         setError(res.error || "Failed to load outreach draft");
+      }
+      if (provRes.data) {
+        setConnectedProviders(provRes.data);
       }
     } catch (err: any) {
       setError(err?.message || "Failed to load outreach draft");
@@ -785,107 +794,150 @@ export default function OutreachReviewStudioPage() {
         <Modal
           isOpen={showSendModal}
           onClose={() => setShowSendModal(false)}
-          title="Final Outreach Send Review"
+          title="Email Outreach Send Review"
         >
           <div className="space-y-4 text-xs">
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 space-y-1">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Recipient:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  {draft.contact_name || "Referral Contact"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Channel & Provider:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  {draft.channel} (Authorized Email Gateway)
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Subject:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  {draft.subject || "N/A"}
-                </span>
-              </div>
-            </div>
+            {(() => {
+              const activeEmailProvider = connectedProviders.find((p) => p.is_active);
 
-            {/* Checklist */}
-            <div className="space-y-2 p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300">
-              <div className="flex items-center gap-2 font-medium">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>✓ Human approved by reviewer</span>
-              </div>
-              <div className="flex items-center gap-2 font-medium">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>✓ 12-point truth & safety validation passed</span>
-              </div>
-              <div className="flex items-center gap-2 font-medium">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>✓ Zero fabricated claims or relationships</span>
-              </div>
-              <div className="flex items-center gap-2 font-medium">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>✓ Verified recipient & company alignment</span>
-              </div>
-            </div>
+              if (activeEmailProvider) {
+                return (
+                  <>
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Recipient:</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">
+                          {draft.contact_name || "Referral Contact"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Connected Account:</span>
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                          {activeEmailProvider.provider} ({activeEmailProvider.account_email || activeEmailProvider.email_address})
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Subject:</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">
+                          {draft.subject || "N/A"}
+                        </span>
+                      </div>
+                    </div>
 
-            {/* Double confirmation checkboxes */}
-            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <label className="flex items-start gap-2.5 cursor-pointer text-slate-700 dark:text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={confirmReviewed}
-                  onChange={(e) => setConfirmReviewed(e.target.checked)}
-                  className="rounded text-blue-600 mt-0.5"
-                  id="chk-confirm-reviewed"
-                />
-                <span className="font-medium">
-                  I have personally reviewed this message content and verified the recipient.
-                </span>
-              </label>
+                    {/* Double confirmation checkboxes */}
+                    <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <label className="flex items-start gap-2.5 cursor-pointer text-slate-700 dark:text-slate-300">
+                        <input
+                          type="checkbox"
+                          checked={confirmReviewed}
+                          onChange={(e) => setConfirmReviewed(e.target.checked)}
+                          className="rounded text-blue-600 mt-0.5"
+                          id="chk-confirm-reviewed"
+                        />
+                        <span className="font-medium">
+                          I have personally reviewed this email message content and verified the recipient.
+                        </span>
+                      </label>
 
-              <label className="flex items-start gap-2.5 cursor-pointer text-slate-700 dark:text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={confirmExternal}
-                  onChange={(e) => setConfirmExternal(e.target.checked)}
-                  className="rounded text-blue-600 mt-0.5"
-                  id="chk-confirm-external"
-                />
-                <span className="font-medium">
-                  I understand this consequential action will send an external email on my behalf.
-                </span>
-              </label>
-            </div>
+                      <label className="flex items-start gap-2.5 cursor-pointer text-slate-700 dark:text-slate-300">
+                        <input
+                          type="checkbox"
+                          checked={confirmExternal}
+                          onChange={(e) => setConfirmExternal(e.target.checked)}
+                          className="rounded text-blue-600 mt-0.5"
+                          id="chk-confirm-external"
+                        />
+                        <span className="font-medium">
+                          I understand this consequential action will send an external email through my connected {activeEmailProvider.provider} account.
+                        </span>
+                      </label>
+                    </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <Button variant="outline" onClick={() => setShowSendModal(false)} disabled={sending}>
-                Cancel
-              </Button>
-              <Button
-                onClick={async () => {
-                  setSending(true);
-                  try {
-                    const res = await sendOutreachApi(draft.id, true, "GMAIL");
-                    if (res.data) {
-                      setDispatchRecord(res.data);
-                      setDraft({ ...draft, status: "DISPATCHED" as any });
-                      setShowSendModal(false);
-                      showToast("Message successfully sent via authorized provider!");
-                    } else {
-                      alert(res.error || "Failed to dispatch message");
-                    }
-                  } finally {
-                    setSending(false);
-                  }
-                }}
-                disabled={!confirmReviewed || !confirmExternal || sending}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4"
-                id="btn-send-now"
-              >
-                {sending ? "TRANSMITTING..." : "SEND NOW"}
-              </Button>
-            </div>
+                    <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                      <Button variant="outline" onClick={() => setShowSendModal(false)} disabled={sending}>
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={async () => {
+                          setSending(true);
+                          try {
+                            const res = await sendOutreachApi(draft.id, true, activeEmailProvider.provider);
+                            if (res.data) {
+                              setDispatchRecord(res.data);
+                              setDraft({ ...draft, status: "DISPATCHED" as any, dispatch_status: "SENT" as any });
+                              setShowSendModal(false);
+                              showToast(`Email successfully transmitted via authorized ${activeEmailProvider.provider}!`);
+                            } else {
+                              alert(res.error || "Failed to dispatch email");
+                            }
+                          } finally {
+                            setSending(false);
+                          }
+                        }}
+                        disabled={!confirmReviewed || !confirmExternal || sending}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4"
+                        id="btn-send-now"
+                      >
+                        {sending ? "TRANSMITTING..." : `SEND VIA ${activeEmailProvider.provider}`}
+                      </Button>
+                    </div>
+                  </>
+                );
+              }
+
+              // No provider connected state
+              return (
+                <div className="space-y-4">
+                  <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 leading-relaxed">
+                    <span className="font-bold block mb-1">No Email Provider Connected</span>
+                    CareerPilot never claims an email was transmitted without authorized provider confirmation. Connect your Gmail or Outlook account in Settings to enable direct one-click sending, or copy this draft to send from your own email client.
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-mono text-slate-800 dark:text-slate-200 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                    {draft.subject ? `Subject: ${draft.subject}\n\n${draft.body}` : draft.body}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const full = draft.subject ? `Subject: ${draft.subject}\n\n${draft.body}` : draft.body;
+                        navigator.clipboard.writeText(full);
+                        showToast("Email text copied to clipboard!");
+                      }}
+                      className="w-full sm:w-auto"
+                    >
+                      <Copy className="w-3.5 h-3.5 mr-1.5" />
+                      <span>COPY EMAIL DRAFT</span>
+                    </Button>
+
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <Link
+                        href="/settings"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-200 font-medium transition-colors"
+                      >
+                        <span>Connect in Settings</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </Link>
+
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          await sendOutreachApi(draft.id, true);
+                          setDraft({ ...draft, status: "DISPATCHED" as any, dispatch_status: "SENT" as any });
+                          setShowSendModal(false);
+                          showToast("Marked as sent manually by user.");
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                      >
+                        <Check className="w-3.5 h-3.5 mr-1" />
+                        <span>Mark as Sent Manually</span>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </Modal>
       )}
@@ -895,12 +947,12 @@ export default function OutreachReviewStudioPage() {
         <Modal
           isOpen={showLinkedInModal}
           onClose={() => setShowLinkedInModal(false)}
-          title="Manual Send Required for LinkedIn"
+          title="Manual Transmission Required for LinkedIn"
         >
           <div className="space-y-4 text-xs">
             <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 leading-relaxed">
-              <span className="font-bold block mb-1">Safety & Compliance Policy:</span>
-              CareerPilot strictly preserves candidate account safety and prohibits automated LinkedIn logins, automated browser extensions, and automatic connection requests.
+              <span className="font-bold block mb-1">Safety & Compliance Guarantee:</span>
+              CareerPilot strictly preserves candidate account safety. We never store LinkedIn passwords, use automated browser extensions, or perform automated connection requests.
             </div>
 
             <div>
@@ -919,6 +971,7 @@ export default function OutreachReviewStudioPage() {
                   navigator.clipboard.writeText(draft.body);
                   setCopiedMessage(true);
                   setTimeout(() => setCopiedMessage(false), 3000);
+                  showToast("Message copied to clipboard! Ready to paste into LinkedIn.");
                 }}
                 className="w-full sm:w-auto flex items-center gap-1.5"
                 id="btn-copy-linkedin-msg"
@@ -927,20 +980,33 @@ export default function OutreachReviewStudioPage() {
                 <span>{copiedMessage ? "COPIED TO CLIPBOARD" : "COPY MESSAGE"}</span>
               </Button>
 
-              <a
-                href={draft.contact_profile_url || "https://linkedin.com"}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={async () => {
-                  await sendOutreachApi(draft.id, true);
-                  setDraft({ ...draft, status: "DISPATCHED" as any });
-                }}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#0A66C2] hover:bg-[#004182] text-white font-semibold transition-colors shadow-sm"
-                id="btn-open-linkedin-profile"
-              >
-                <span>OPEN LINKEDIN PROFILE</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <a
+                  href={draft.contact_profile_url || "https://linkedin.com"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#0A66C2] hover:bg-[#004182] text-white font-semibold transition-colors shadow-sm"
+                  id="btn-open-linkedin-profile"
+                >
+                  <span>OPEN LINKEDIN PROFILE</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    await sendOutreachApi(draft.id, true);
+                    setDraft({ ...draft, status: "DISPATCHED" as any, dispatch_status: "SENT" as any });
+                    setShowLinkedInModal(false);
+                    showToast("Marked as sent manually by user.");
+                  }}
+                  title="Record that you manually pasted and sent this note on LinkedIn"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-emerald-500" />
+                  <span>Mark as Sent</span>
+                </Button>
+              </div>
             </div>
           </div>
         </Modal>

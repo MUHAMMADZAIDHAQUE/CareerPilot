@@ -356,6 +356,9 @@ class JobDiscoveryService:
             )
         if is_active is not None:
             conditions.append(Job.is_active == is_active)
+        else:
+            conditions.append(Job.is_active == True)
+        conditions.append(Job.is_expired == False)
 
         if conditions:
             query = query.where(and_(*conditions))
@@ -979,8 +982,8 @@ class JobDiscoveryService:
         cand_res = await session.execute(cand_stmt)
         candidate = cand_res.scalars().first()
 
-        # 2. Build SQL query
-        query = select(Job).where(Job.is_active == True)
+        # 2. Build SQL query (exclude expired or inactive opportunities by default)
+        query = select(Job).where(Job.is_active == True, Job.is_expired == False)
 
         # Keyword / Role query
         if filter_req.query and filter_req.query.strip():
@@ -1131,6 +1134,12 @@ class JobDiscoveryService:
 
         scored_jobs: List[JobResponse] = []
         for j in jobs_pool:
+            # Dynamic job lifecycle: exclude expired opportunities or past deadlines
+            if j.is_expired or is_job_expired(j.deadline, j.raw_description):
+                if not j.is_expired:
+                    j.is_expired = True
+                continue
+
             job_resp = cls._job_model_to_response(j)
 
             # Down-rank senior roles in fresher mode unless explicitly eligible

@@ -16,7 +16,7 @@ interface AuthContextType {
   token: string | null;
   loading: boolean;
   isAdmin: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; user?: UserProfile; error?: string }>;
   register: (
     email: string,
     password: string,
@@ -56,6 +56,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     refreshUser();
+
+    const handleUnauthorized = () => {
+      clearAuthToken();
+      setUser(null);
+      setToken(null);
+      setLoading(false);
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("careerpilot:unauthorized", handleUnauthorized);
+      return () => {
+        window.removeEventListener("careerpilot:unauthorized", handleUnauthorized);
+      };
+    }
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -65,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setToken(data.access_token);
     setUser(data.user);
-    return { success: true };
+    return { success: true, user: data.user };
   };
 
   const register = async (

@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { Candidate } from "@/lib/api";
+import React, { useState } from "react";
+import { Candidate, updateCandidateProfile } from "@/lib/api";
 import {
   User,
   Mail,
@@ -14,8 +14,11 @@ import {
   CheckCircle2,
   Briefcase,
   Upload,
+  Edit3,
+  Save,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 
 interface ProfileHeroProps {
   candidate: Candidate | null;
@@ -28,7 +31,55 @@ export default function ProfileHero({
   candidate,
   onOpenImportModal,
   onOpenUploadModal,
+  onRefresh,
 }: ProfileHeroProps) {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    full_name: candidate?.full_name || "",
+    headline: candidate?.headline || "",
+    location: candidate?.location || "",
+    phone: candidate?.phone || "",
+    summary: candidate?.summary || "",
+    linkedin_url: candidate?.linkedin_url || "",
+    github_url: candidate?.github_url || "",
+    portfolio_url: candidate?.portfolio_url || "",
+  });
+
+  const handleOpenEdit = () => {
+    if (candidate) {
+      setForm({
+        full_name: candidate.full_name || "",
+        headline: candidate.headline || "",
+        location: candidate.location || "",
+        phone: candidate.phone || "",
+        summary: candidate.summary || "",
+        linkedin_url: candidate.linkedin_url || "",
+        github_url: candidate.github_url || "",
+        portfolio_url: candidate.portfolio_url || "",
+      });
+    }
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!candidate) return;
+    setSaving(true);
+    try {
+      const res = await updateCandidateProfile(form, candidate.id);
+      if (res.data) {
+        setIsEditModalOpen(false);
+        onRefresh();
+      } else {
+        alert(res.error || "Failed to update profile facts");
+      }
+    } catch (err: any) {
+      alert(err?.message || "Failed to update profile facts");
+    } finally {
+      setSaving(false);
+    }
+  };
   if (!candidate) {
     return (
       <div className="bg-white dark:bg-[#111827] rounded-2xl p-8 sm:p-12 text-center space-y-5 border-2 border-dashed border-slate-200 dark:border-slate-800 shadow-sm">
@@ -90,6 +141,10 @@ export default function ProfileHero({
 
         {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2.5">
+          <Button onClick={handleOpenEdit} variant="outline" size="sm" id="btn-edit-profile-facts">
+            <Edit3 className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
+            Edit Profile Facts
+          </Button>
           <Button onClick={onOpenUploadModal} variant="primary" size="sm">
             <Upload className="w-3.5 h-3.5 mr-1.5" />
             Upload New File
@@ -168,6 +223,118 @@ export default function ProfileHero({
           )}
         </div>
       </div>
+
+      {/* Edit Profile Facts Modal */}
+      {isEditModalOpen && (
+        <Modal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          title="Edit Master Career Profile Facts"
+          description="Update your canonical profile details. Changes immediately ground downstream resume tailoring and outreach."
+        >
+          <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Full Legal Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={form.full_name}
+                  onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Professional Headline</label>
+                <input
+                  type="text"
+                  value={form.headline}
+                  onChange={(e) => setForm({ ...form, headline: e.target.value })}
+                  placeholder="e.g. Senior Software Engineer"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Location</label>
+                <input
+                  type="text"
+                  value={form.location}
+                  onChange={(e) => setForm({ ...form, location: e.target.value })}
+                  placeholder="e.g. San Francisco, CA / Bengaluru, India"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Phone Number</label>
+                <input
+                  type="text"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="e.g. +1 555-0199"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">LinkedIn URL</label>
+                <input
+                  type="url"
+                  value={form.linkedin_url}
+                  onChange={(e) => setForm({ ...form, linkedin_url: e.target.value })}
+                  placeholder="https://linkedin.com/in/username"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">GitHub URL</label>
+                <input
+                  type="url"
+                  value={form.github_url}
+                  onChange={(e) => setForm({ ...form, github_url: e.target.value })}
+                  placeholder="https://github.com/username"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Portfolio / Personal Website</label>
+              <input
+                type="url"
+                value={form.portfolio_url}
+                onChange={(e) => setForm({ ...form, portfolio_url: e.target.value })}
+                placeholder="https://yourportfolio.dev"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Executive Summary / Bio</label>
+              <textarea
+                rows={3}
+                value={form.summary}
+                onChange={(e) => setForm({ ...form, summary: e.target.value })}
+                placeholder="Brief summary of your technical background and career objectives..."
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" loading={saving}>
+                <Save className="w-3.5 h-3.5 mr-1.5" />
+                <span>Save Profile Facts</span>
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }

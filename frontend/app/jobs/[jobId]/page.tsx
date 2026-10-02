@@ -53,6 +53,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { LoadingState, ErrorState, EmptyState } from "@/components/ui/States";
+import { getSafeExternalJobUrl } from "@/lib/utils";
 
 export default function JobMatchDetailPage() {
   const params = useParams();
@@ -84,7 +85,7 @@ export default function JobMatchDetailPage() {
     setDiscoveringReferrals(true);
     setReferralError(null);
     try {
-      const res = await discoverReferralsEngineApi(job.id);
+      const res = await discoverReferralsEngineApi(job.id, undefined, 100);
       if (res.data) {
         setReferralResult(res.data);
       } else {
@@ -143,11 +144,18 @@ export default function JobMatchDetailPage() {
         });
       }
 
-      // 4. Fetch referrals
+      // 4. Fetch referrals & automatically trigger 100-target discovery
       const refRes = await fetchJobReferralsApi(jobId);
       if (refRes.data) {
         setReferrals(refRes.data.referrals || []);
       }
+      setDiscoveringReferrals(true);
+      discoverReferralsEngineApi(jobId, undefined, 100).then((discRes) => {
+        if (discRes.data) {
+          setReferralResult(discRes.data);
+        }
+        setDiscoveringReferrals(false);
+      }).catch(() => setDiscoveringReferrals(false));
 
       // 5. Fetch interview prep kit preview
       const prepRes = await fetchInterviewPrepApi(jobId);
@@ -238,17 +246,20 @@ export default function JobMatchDetailPage() {
         </Link>
 
         <div className="flex items-center gap-2">
-          {(job?.application_url || job?.canonical_url) && (
-            <a
-              href={(job.application_url || job.canonical_url)!}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900 transition-colors font-medium"
-            >
-              <span>Original Posting</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
-          )}
+          {(() => {
+            const safeUrl = getSafeExternalJobUrl(job);
+            return safeUrl ? (
+              <a
+                href={safeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900 transition-colors font-medium"
+              >
+                <span>Original Posting</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            ) : null;
+          })()}
         </div>
       </div>
 
@@ -286,9 +297,9 @@ export default function JobMatchDetailPage() {
                 {job.source_references.length} Sources Aggregated
               </span>
             )}
-            {job?.is_active === false && (
+            {(job?.is_expired || job?.is_active === false) && (
               <Badge variant="error" size="sm">
-                Expired
+                Opportunity Expired
               </Badge>
             )}
           </div>
@@ -354,6 +365,19 @@ export default function JobMatchDetailPage() {
             </div>
           )}
 
+          {/* Opportunity Expired Banner */}
+          {(job?.is_expired || job?.is_active === false) && (
+            <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs space-y-1">
+              <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-200">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span>Opportunity Expired / Application Deadline Passed</span>
+              </div>
+              <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                This job posting has reached its deadline or has been closed by the employer. It is preserved for your historical tracking and record keeping.
+              </p>
+            </div>
+          )}
+
           {/* External Application Notice Banner */}
           <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 flex items-start gap-2.5">
             <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
@@ -369,18 +393,21 @@ export default function JobMatchDetailPage() {
 
           {/* Section 15 Human Action Buttons */}
           <div className="flex flex-wrap items-center gap-3 pt-1">
-            {(job?.application_url || job?.canonical_url || job?.official_company_url) && (
-              <a
-                href={(job.official_company_url || job.application_url || job.canonical_url)!}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-subtle transition-colors"
-                id="action-view-job"
-              >
-                <span>VIEW JOB ON PORTAL</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            )}
+            {(() => {
+              const safeUrl = getSafeExternalJobUrl(job);
+              return safeUrl ? (
+                <a
+                  href={safeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-subtle transition-colors"
+                  id="action-view-job"
+                >
+                  <span>VIEW JOB ON PORTAL</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              ) : null;
+            })()}
 
             {tailorData?.version?.id ? (
               <Link
@@ -966,7 +993,7 @@ export default function JobMatchDetailPage() {
                 ) : (
                   <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
                     <p className="font-semibold">Discovery Notice:</p>
-                    <p className="mt-0.5">{referralResult.notice || `Target not reached because fewer verified contacts were discoverable (${referralResult.total_verified}/50). Zero fake contacts fabricated.`}</p>
+                    <p className="mt-0.5">{referralResult.notice || `Target not reached because fewer verified contacts were discoverable (${referralResult.total_verified}/100). Zero fake contacts fabricated.`}</p>
                   </div>
                 )}
 

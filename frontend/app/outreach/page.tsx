@@ -212,6 +212,13 @@ function OutreachStudioContent() {
               <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
               <span>Refresh</span>
             </button>
+
+            {selectedJobId !== "ALL" && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800 text-[11px] text-blue-700 dark:text-blue-300 font-medium">
+                <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>Target: <strong>{jobs.find((j) => j.id === selectedJobId)?.role}</strong> at <strong>{jobs.find((j) => j.id === selectedJobId)?.company}</strong></span>
+              </div>
+            )}
           </div>
         </div>
 

@@ -571,6 +571,32 @@ export default function ApplicationsPage() {
                             </div>
                           )}
 
+                          {/* Connected Context Links */}
+                          <div className="flex items-center gap-3 pt-1 text-[11px]">
+                            {app.job_id && (
+                              <Link
+                                href={`/jobs/${app.job_id}`}
+                                className="inline-flex items-center gap-1 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
+                                title="View original opportunity details"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Building2 className="w-3 h-3 text-slate-400" />
+                                <span>Original Job</span>
+                              </Link>
+                            )}
+                            {app.job_id && (
+                              <Link
+                                href={`/resumes?job_id=${app.job_id}`}
+                                className="inline-flex items-center gap-1 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
+                                title="Inspect tailored resume for this job"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <FileText className="w-3 h-3 text-slate-400" />
+                                <span>Resume Used</span>
+                              </Link>
+                            )}
+                          </div>
+
                           {/* Card Footer */}
                           <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500">
                             <button
@@ -713,6 +739,33 @@ export default function ApplicationsPage() {
         description={`${editingApp?.job?.company || "Company"} • Tracked since ${editingApp?.created_at ? new Date(editingApp.created_at).toLocaleDateString() : ""}`}
       >
         <form onSubmit={handleSaveEdit} className="space-y-4">
+          {editingApp?.job_id && (
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                Connected Context:
+              </span>
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/jobs/${editingApp.job_id}`}
+                  className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                >
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>Job Details</span>
+                  <ExternalLink className="w-2.5 h-2.5" />
+                </Link>
+                <span>•</span>
+                <Link
+                  href={`/resumes?job_id=${editingApp.job_id}`}
+                  className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Tailored Resume</span>
+                  <ExternalLink className="w-2.5 h-2.5" />
+                </Link>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <Select
               label="Application Stage"

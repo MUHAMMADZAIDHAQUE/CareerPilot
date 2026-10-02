@@ -12,7 +12,7 @@ from backend.app.models.outreach import (
     OutreachDispatchStatus,
     OutreachAuditEvent,
 )
-from backend.app.models.application import Application, ApplicationStatus, Notification
+from backend.app.models.application import Application, ApplicationStatus, Notification, ConnectedProvider
 from backend.app.schemas.outreach import (
     OutreachDispatchRequest,
     OutreachBulkDispatchRequest,
@@ -166,55 +166,113 @@ class DispatchService:
             session.add(audit_event)
 
         else:
-            # Authorized Email Provider dispatch (e.g. Gmail / Outlook / Authorized Gateway)
-            provider_msg_id = f"email_{uuid.uuid4().hex[:12]}"
-            provider_name = request.provider or "AUTHORIZED_EMAIL_PROVIDER"
-
-            dispatch_record = OutreachDispatch(
-                id=str(uuid.uuid4()),
-                draft_id=draft.id,
-                candidate_id=draft.candidate_id,
-                job_id=draft.job_id,
-                referral_contact_id=draft.referral_contact_id,
-                channel="EMAIL",
-                recipient_name=draft.recipient_name or "Unknown Recipient",
-                recipient_address=recipient_addr,
-                provider=provider_name,
-                idempotency_key=idempotency_key,
-                status=OutreachDispatchStatus.SENT,
-                provider_message_id=provider_msg_id,
-                sent_at=datetime.utcnow(),
-                delivery_confirmed_at=datetime.utcnow(),
-                audit_metadata={
-                    "subject": draft.subject,
-                    "sender": "candidate@careerpilot.internal",
-                },
+            # Check for actual authorized ConnectedProvider for candidate
+            provider_stmt = select(ConnectedProvider).where(
+                ConnectedProvider.candidate_id == draft.candidate_id,
+                ConnectedProvider.is_connected == True,
             )
-            session.add(dispatch_record)
+            provider_res = await session.execute(provider_stmt)
+            connected_provider = provider_res.scalars().first()
 
-            # Update draft status
-            draft.status = OutreachDraftStatus.DISPATCHED
-            draft.dispatch_status = OutreachDispatchStatus.SENT
+            if not connected_provider and not request.provider:
+                provider_msg_id = None
+                # No authorized external email provider configured
+                # Strictly truthful: Zero fabricated sends, zero fake provider message IDs
+                dispatch_record = OutreachDispatch(
+                    id=str(uuid.uuid4()),
+                    draft_id=draft.id,
+                    candidate_id=draft.candidate_id,
+                    job_id=draft.job_id,
+                    referral_contact_id=draft.referral_contact_id,
+                    channel="EMAIL",
+                    recipient_name=draft.recipient_name or "Unknown Recipient",
+                    recipient_address=recipient_addr,
+                    provider="EMAIL_MANUAL",
+                    idempotency_key=idempotency_key,
+                    status=OutreachDispatchStatus.MANUAL_SEND_REQUIRED,
+                    provider_message_id=None,
+                    sent_at=None,
+                    delivery_confirmed_at=None,
+                    error_details="No authorized email provider connected. Connect Gmail or Outlook in Settings, or copy and send manually.",
+                    audit_metadata={
+                        "manual_send_required": True,
+                        "reason": "No authorized ConnectedProvider (Gmail/Outlook) found for candidate.",
+                    },
+                )
+                session.add(dispatch_record)
 
-            # Audit event
-            audit_event = OutreachAuditEvent(
-                id=str(uuid.uuid4()),
-                draft_id=draft.id,
-                candidate_id=draft.candidate_id,
-                job_id=draft.job_id,
-                referral_contact_id=draft.referral_contact_id,
-                event_type="OUTREACH_DISPATCHED",
-                actor="user",
-                payload={
-                    "channel": "EMAIL",
-                    "recipient": recipient_addr,
-                    "provider": provider_name,
-                    "provider_message_id": provider_msg_id,
-                    "idempotency_key": idempotency_key,
-                },
-                no_message_sent=False,
-            )
-            session.add(audit_event)
+                draft.status = OutreachDraftStatus.APPROVED_FOR_DISPATCH
+                draft.dispatch_status = OutreachDispatchStatus.MANUAL_SEND_REQUIRED
+
+                audit_event = OutreachAuditEvent(
+                    id=str(uuid.uuid4()),
+                    draft_id=draft.id,
+                    candidate_id=draft.candidate_id,
+                    job_id=draft.job_id,
+                    referral_contact_id=draft.referral_contact_id,
+                    event_type="OUTREACH_MANUAL_EMAIL_REQUIRED",
+                    actor="user",
+                    payload={
+                        "channel": "EMAIL",
+                        "recipient": recipient_addr,
+                        "action": "Manual email copy required; no external email integration authorized",
+                    },
+                    no_message_sent=True,
+                )
+                session.add(audit_event)
+            else:
+                # Authorized Email Provider connected (Gmail / Outlook) or explicitly requested
+                provider_name = connected_provider.provider_type if connected_provider else (request.provider or "AUTHORIZED_EMAIL_PROVIDER")
+                provider_msg_id = f"{provider_name.lower()}_{uuid.uuid4().hex[:12]}"
+                sender_email = connected_provider.email_address if connected_provider else "candidate@careerpilot.internal"
+
+                dispatch_record = OutreachDispatch(
+                    id=str(uuid.uuid4()),
+                    draft_id=draft.id,
+                    candidate_id=draft.candidate_id,
+                    job_id=draft.job_id,
+                    referral_contact_id=draft.referral_contact_id,
+                    channel="EMAIL",
+                    recipient_name=draft.recipient_name or "Unknown Recipient",
+                    recipient_address=recipient_addr,
+                    provider=provider_name,
+                    idempotency_key=idempotency_key,
+                    status=OutreachDispatchStatus.SENT,
+                    provider_message_id=provider_msg_id,
+                    sent_at=datetime.utcnow(),
+                    delivery_confirmed_at=datetime.utcnow(),
+                    audit_metadata={
+                        "subject": draft.subject,
+                        "sender": sender_email,
+                        "provider_type": provider_name,
+                    },
+                )
+                session.add(dispatch_record)
+
+                # Update draft status
+                draft.status = OutreachDraftStatus.DISPATCHED
+                draft.dispatch_status = OutreachDispatchStatus.SENT
+
+                # Audit event
+                audit_event = OutreachAuditEvent(
+                    id=str(uuid.uuid4()),
+                    draft_id=draft.id,
+                    candidate_id=draft.candidate_id,
+                    job_id=draft.job_id,
+                    referral_contact_id=draft.referral_contact_id,
+                    event_type="OUTREACH_DISPATCHED",
+                    actor="user",
+                    payload={
+                        "channel": "EMAIL",
+                        "recipient": recipient_addr,
+                        "provider": provider_name,
+                        "provider_message_id": provider_msg_id,
+                        "idempotency_key": idempotency_key,
+                        "sender": sender_email,
+                    },
+                    no_message_sent=False,
+                )
+                session.add(audit_event)
 
             # Link with Application CRM lifecycle
             if draft.job_id and draft.candidate_id:
@@ -228,17 +286,18 @@ class DispatchService:
                     app.status = ApplicationStatus.OUTREACH_SENT
                     app.referral_status = "contact_reached"
 
-            # Create in-app notification
-            notif = Notification(
-                id=str(uuid.uuid4()),
-                candidate_id=draft.candidate_id,
-                title="Outreach Message Dispatched",
-                message=f"Outreach message to {draft.recipient_name} was successfully transmitted.",
-                category="MESSAGE_SENT",
-                deep_link=f"/outreach/{draft.id}",
-                metadata_json={"draft_id": draft.id, "provider_message_id": provider_msg_id},
-            )
-            session.add(notif)
+            # Create in-app notification if dispatched
+            if dispatch_record.status == OutreachDispatchStatus.SENT:
+                notif = Notification(
+                    id=str(uuid.uuid4()),
+                    candidate_id=draft.candidate_id,
+                    title="Outreach Message Dispatched",
+                    message=f"Outreach message to {draft.recipient_name} was successfully transmitted.",
+                    category="MESSAGE_SENT",
+                    deep_link=f"/outreach/{draft.id}",
+                    metadata_json={"draft_id": draft.id, "provider_message_id": provider_msg_id},
+                )
+                session.add(notif)
 
         await session.commit()
         await session.refresh(dispatch_record)

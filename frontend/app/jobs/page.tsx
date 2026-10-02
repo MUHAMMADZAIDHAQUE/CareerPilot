@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Briefcase,
   Search,
@@ -49,6 +50,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { JobCardSkeleton } from "@/components/ui/Skeleton";
+import { getSafeExternalJobUrl } from "@/lib/utils";
 
 const DEFAULT_SOURCES = [
   "linkedin",
@@ -90,7 +92,12 @@ const EXP_OPTIONS = [
 const JOB_TYPE_OPTIONS = ["Full-time", "Internship", "Contract", "Part-time"];
 const WORK_MODE_OPTIONS = ["Remote", "Hybrid", "On-site"];
 
-export default function JobDiscoveryPortalPage() {
+function JobDiscoveryPortalContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const companyParam = searchParams.get("company") || "";
+  const tailorPrompt = searchParams.get("tailor_prompt") === "true";
+
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [sourceCapabilities, setSourceCapabilities] = useState<SourceCapability[]>([]);
@@ -108,7 +115,14 @@ export default function JobDiscoveryPortalPage() {
   const [selectedWorkModes, setSelectedWorkModes] = useState<string[]>(["Remote", "Hybrid", "On-site"]);
   const [postedWithin, setPostedWithin] = useState<number | undefined>(undefined);
   const [minMatchScore, setMinMatchScore] = useState<number>(0);
-  const [companyFilter, setCompanyFilter] = useState("");
+  const [companyFilter, setCompanyFilter] = useState(companyParam);
+
+  // Synchronize company filter from URL params if present
+  useEffect(() => {
+    if (companyParam) {
+      setCompanyFilter(companyParam);
+    }
+  }, [companyParam]);
 
   // Modals
   const [showSourcesModal, setShowSourcesModal] = useState(false);
@@ -195,9 +209,19 @@ export default function JobDiscoveryPortalPage() {
     selectedWorkModes,
     postedWithin,
     minMatchScore,
+    companyFilter,
   ]);
 
   // Actions
+  const handleTailorResume = (job: Job) => {
+    const hasMaster = (candidate && (candidate.skills?.length > 0 || candidate.experiences?.length > 0)) || false;
+    if (!hasMaster) {
+      router.push(`/resumes?upload=true&job_id=${job.id}`);
+    } else {
+      router.push(`/resumes?job_id=${job.id}`);
+    }
+  };
+
   const handleSaveJob = async (job: Job) => {
     const res = await saveJobApi(job.id, candidate?.id);
     if (!res.error) {
@@ -541,6 +565,24 @@ export default function JobDiscoveryPortalPage() {
             </div>
           </div>
 
+          {/* Target Company Context Banner */}
+          {companyFilter && (
+            <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 flex items-center justify-between gap-3 text-xs sm:text-sm text-blue-800 dark:text-blue-200 animate-in fade-in">
+              <div className="flex items-center gap-2.5">
+                <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
+                <span>
+                  Target Company: <strong>{companyFilter}</strong>. Select a specific role below to tailor your resume and automatically discover referral prospects.
+                </span>
+              </div>
+              <button
+                onClick={() => setCompanyFilter("")}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold"
+              >
+                Clear Company
+              </button>
+            </div>
+          )}
+
           {searching ? (
             <div className="space-y-3">
               <JobCardSkeleton />
@@ -677,10 +719,20 @@ export default function JobDiscoveryPortalPage() {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <Link href={`/resumes?job_id=${job.id}`}>
-                          <Button size="sm" variant="outline" className="text-xs flex items-center gap-1.5">
-                            <FileCode className="w-3.5 h-3.5" />
-                            <span>TAILOR RESUME</span>
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          onClick={() => handleTailorResume(job)}
+                          className="text-xs flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                        >
+                          <FileCode className="w-3.5 h-3.5" />
+                          <span>TAILOR RESUME</span>
+                        </Button>
+
+                        <Link href={`/referrals?job_id=${job.id}`}>
+                          <Button size="sm" variant="outline" className="text-xs flex items-center gap-1.5 hover:border-blue-400">
+                            <Users2 className="w-3.5 h-3.5 text-blue-500" />
+                            <span>REFERRALS</span>
                           </Button>
                         </Link>
 
@@ -698,17 +750,20 @@ export default function JobDiscoveryPortalPage() {
                           <span>{queuedJobIds.has(job.id) ? "QUEUED" : "QUEUE"}</span>
                         </Button>
 
-                        {(job.official_company_url || job.application_url || job.canonical_url) && (
-                          <a
-                            href={(job.official_company_url || job.application_url || job.canonical_url)!}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors"
-                          >
-                            <span>OPEN ORIGINAL</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        )}
+                        {(() => {
+                          const safeUrl = getSafeExternalJobUrl(job);
+                          return safeUrl ? (
+                            <a
+                              href={safeUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors"
+                            >
+                              <span>OPEN ORIGINAL</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ) : null;
+                        })()}
                       </div>
                     </div>
                   </Card>
@@ -877,5 +932,20 @@ export default function JobDiscoveryPortalPage() {
         </Modal>
       )}
     </div>
+  );
+}
+
+export default function JobDiscoveryPortalPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="py-20 text-center text-slate-500 flex flex-col items-center justify-center gap-3">
+          <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
+          <span className="text-sm font-medium">Loading Job Board...</span>
+        </div>
+      }
+    >
+      <JobDiscoveryPortalContent />
+    </Suspense>
   );
 }

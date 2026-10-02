@@ -425,7 +425,7 @@ export default function DashboardPage() {
               <div className="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 text-xs sm:text-sm text-slate-500 dark:text-slate-400 space-y-2">
                 <p>No tailored resumes created yet.</p>
                 <Link
-                  href="/resumes"
+                  href={data?.strong_matches?.[0]?.job_id ? `/resumes?job_id=${data.strong_matches[0].job_id}` : "/jobs"}
                   className="inline-flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-semibold hover:underline"
                 >
                   <span>Tailor resume for top match</span>

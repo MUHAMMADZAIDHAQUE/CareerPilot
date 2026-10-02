@@ -108,7 +108,9 @@ export default function AdminPage() {
   const [lastRunResult, setLastRunResult] = useState<IngestionRun | null>(null);
 
   // Initial load: Dashboard KPIs, Users & Ingestion summary
+  // CP-003: Strictly ensure auth loading has finished and verified user is ADMIN
   const loadInitialData = async () => {
+    if (authLoading || !user || !isAdmin) return;
     setLoading(true);
     setErrorMsg(null);
     try {
@@ -136,14 +138,14 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    if (isAdmin) {
+    if (!authLoading && user && isAdmin) {
       loadInitialData();
     }
-  }, [isAdmin]);
+  }, [authLoading, user, isAdmin]);
 
   // Load specific tab data on demand
   useEffect(() => {
-    if (!isAdmin) return;
+    if (authLoading || !user || !isAdmin) return;
     const fetchTabData = async () => {
       setTabLoading(true);
       try {
@@ -177,7 +179,7 @@ export default function AdminPage() {
     };
 
     fetchTabData();
-  }, [activeTab, isAdmin, roleFilter, appStatusFilter, refStatusFilter]);
+  }, [activeTab, authLoading, user, isAdmin, roleFilter, appStatusFilter, refStatusFilter]);
 
   const handleToggleStatus = async (targetUser: UserProfile) => {
     setUpdatingId(targetUser.id);
@@ -234,8 +236,20 @@ export default function AdminPage() {
     }
   };
 
-  // Not authenticated or not admin guard
-  if (!authLoading && !isAdmin) {
+  // CP-003: Wait for auth verification to complete before determining access
+  if (authLoading) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center py-12 px-4 text-center">
+        <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+          Verifying administrator permissions...
+        </p>
+      </div>
+    );
+  }
+
+  // Not authenticated or not admin guard: strictly block without calling admin APIs
+  if (!user || !isAdmin) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center py-12 px-4 text-center">
         <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 flex items-center justify-center text-amber-700 dark:text-amber-400 mb-6 shadow-xl">
