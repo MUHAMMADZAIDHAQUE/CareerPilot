@@ -20,6 +20,7 @@ from backend.app.services.referral_discovery.base import (
     RawReferralContact,
     ReferralQueryContext,
     ReferralSourceAdapter,
+    ReferralVerificationStatus,
 )
 from backend.app.services.referral_discovery.normalizer import ReferralContactNormalizer
 from backend.app.services.referral_discovery.sources import AVAILABLE_REFERRAL_SOURCES
@@ -185,12 +186,15 @@ class ReferralDiscoveryService:
 
         # 6. Public Professional Evidence (10 pts max)
         ref_count = len(contact.source_references)
-        if ref_count >= 2:
-            breakdown["public_evidence"] = 10.0
-            reasons.append(f"Multi-source verified provenance across {ref_count} public directories")
-        elif contact.verification_status == "VERIFIED":
-            breakdown["public_evidence"] = 8.0
-            reasons.append("Verified public professional profile")
+        if contact.verification_status == ReferralVerificationStatus.VERIFIED:
+            breakdown["public_evidence"] = 10.0 if ref_count >= 2 else 9.0
+            reasons.append("Independently verified public professional profile")
+        elif contact.verification_status == ReferralVerificationStatus.INDEXED_PROSPECT:
+            breakdown["public_evidence"] = 8.0 if ref_count >= 2 else 7.0
+            reasons.append("Indexed public professional profile")
+        elif contact.verification_status == ReferralVerificationStatus.SEARCH_LEAD:
+            breakdown["public_evidence"] = 6.0
+            reasons.append("Direct public directory search channel")
         else:
             breakdown["public_evidence"] = 4.0
 
@@ -202,6 +206,13 @@ class ReferralDiscoveryService:
     # Deduplication & Merging Engine
     # -------------------------------------------------------------------------
 
+    STATUS_HIERARCHY = {
+        ReferralVerificationStatus.VERIFIED: 4,
+        ReferralVerificationStatus.INDEXED_PROSPECT: 3,
+        ReferralVerificationStatus.SEARCH_LEAD: 2,
+        ReferralVerificationStatus.UNVERIFIED: 1,
+    }
+
     @classmethod
     def deduplicate_and_merge_contacts(
         cls,
@@ -212,7 +223,7 @@ class ReferralDiscoveryService:
         Rules:
         - 1 canonical contact created across LinkedIn, Company team page, GitHub, etc.
         - Merge source_references into a single combined provenance list.
-        - Preserve highest verification status.
+        - Preserve highest verification status without artificially upgrading search leads to verified.
         - Merge skill lists without duplicates.
         """
         dedup_map: Dict[str, RawReferralContact] = {}
@@ -239,9 +250,17 @@ class ReferralDiscoveryService:
                         existing.source_references.append(new_ref)
                         existing_sources.add(new_ref.get("source"))
 
-                # Upgrade verification status
-                if contact.verification_status == "VERIFIED" or len(existing.source_references) >= 2:
-                    existing.verification_status = "VERIFIED"
+                # Upgrade verification status strictly according to hierarchy and multi-source corroboration
+                c_rank = cls.STATUS_HIERARCHY.get(contact.verification_status, 1)
+                e_rank = cls.STATUS_HIERARCHY.get(existing.verification_status, 1)
+                if c_rank > e_rank:
+                    existing.verification_status = contact.verification_status
+                
+                # Multi-source corroboration: if a person has 3+ independent sources confirming affiliation, mark VERIFIED
+                if len(existing.source_references) >= 3:
+                    existing.verification_status = ReferralVerificationStatus.VERIFIED
+                elif len(existing.source_references) >= 2 and existing.verification_status == ReferralVerificationStatus.UNVERIFIED:
+                    existing.verification_status = ReferralVerificationStatus.INDEXED_PROSPECT
 
                 # Merge skills
                 all_skills = list(dict.fromkeys(existing.skills + contact.skills))
@@ -393,9 +412,9 @@ class ReferralDiscoveryService:
 
         # 6. Target Evaluation
         total_discovered = len(scored_items)
-        verified_count = sum(1 for c, _, _, _ in scored_items if c.verification_status == "VERIFIED")
-        target_reached = verified_count >= target_count
-        shortfall = max(0, target_count - verified_count)
+        verified_count = sum(1 for c, _, _, _ in scored_items if c.verification_status == ReferralVerificationStatus.VERIFIED)
+        target_reached = total_discovered >= target_count
+        shortfall = max(0, target_count - total_discovered)
 
         notice = None
         if not target_reached:

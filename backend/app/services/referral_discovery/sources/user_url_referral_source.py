@@ -1,5 +1,11 @@
 from typing import List, Optional, Dict, Any
-from backend.app.services.referral_discovery.base import ReferralSourceAdapter, RawReferralContact, ReferralQueryContext
+from urllib.parse import quote_plus
+from backend.app.services.referral_discovery.base import (
+    ReferralSourceAdapter,
+    RawReferralContact,
+    ReferralQueryContext,
+    ReferralVerificationStatus,
+)
 from backend.app.services.referral_discovery.normalizer import ReferralContactNormalizer
 
 
@@ -8,6 +14,7 @@ class UserUrlReferralSource(ReferralSourceAdapter):
     User-Provided URLs & Network Contacts Source.
     Ingests and normalizes user-provided professional connections, portfolio links,
     and verified network contacts.
+    Adheres strictly to honest provenance: NO synthetic names, NO fake profile URLs.
     """
     source_id: str = "user_url"
     source_name: str = "User-Provided Connections & Directory"
@@ -15,38 +22,38 @@ class UserUrlReferralSource(ReferralSourceAdapter):
     legitimate_access_method: str = "User-supplied professional directory links"
 
     async def discover_contacts(self, ctx: ReferralQueryContext) -> List[RawReferralContact]:
-        """Returns user-provided contacts matching company or query context."""
-        norm_company = ReferralContactNormalizer.normalize_company(ctx.company)
+        """Returns user-provided contacts or former colleague network search leads."""
         contacts: List[RawReferralContact] = []
+        company = ctx.company.strip()
 
-        # If previous candidate companies exist, provide former colleague context
+        # If previous candidate companies exist, provide former colleague search channels
         if ctx.candidate_previous_companies:
             for prev_co in ctx.candidate_previous_companies[:2]:
-                c_name = f"Alex Mercer"
-                c_title = f"Senior Systems Architect"
-                c_url = f"https://professional.network/in/alex-mercer-{prev_co.lower()}"
+                c_name = f"Former {prev_co} Colleague Network at {company}"
+                c_title = f"Colleague with shared {prev_co} background"
+                c_url = f"https://www.google.com/search?q=site%3Alinkedin.com%2Fin+%22{quote_plus(prev_co)}%22+%22{quote_plus(company)}%22"
                 raw = RawReferralContact(
                     name=c_name,
-                    company=ctx.company,
+                    company=company,
                     current_title=c_title,
-                    headline=f"{c_title} at {ctx.company} (Former colleague from {prev_co})",
+                    headline=f"Search former colleagues from {prev_co} currently working at {company}",
                     department="Engineering",
-                    location="San Francisco, CA",
+                    location="Global / Network",
                     profile_url=c_url,
                     source=self.source_id,
                     source_url=c_url,
                     source_references=[{
-                        "source": "User-Provided Connection",
+                        "source": "User Network & Colleague Directory",
                         "url": c_url,
-                        "type": "user_network",
-                        "former_company": prev_co
+                        "type": "former_colleague_lead",
+                        "former_company": prev_co,
                     }],
-                    public_contact_method="Professional Network",
-                    university=ctx.candidate_universities[0] if ctx.candidate_universities else "MIT",
-                    skills=ctx.candidate_skills[:4] if ctx.candidate_skills else ["Python", "FastAPI"],
+                    public_contact_method="Professional Network Search",
+                    university=ctx.candidate_universities[0] if ctx.candidate_universities else "Alumni Network",
+                    skills=ctx.candidate_skills[:4] if ctx.candidate_skills else ["Software Engineering"],
                     relationship_type="EMPLOYEE",
-                    verification_status="VERIFIED",
-                    raw_metadata={"network_origin": "former_colleague"}
+                    verification_status=ReferralVerificationStatus.SEARCH_LEAD,
+                    raw_metadata={"network_origin": "former_colleague_search", "former_company": prev_co},
                 )
                 contacts.append(ReferralContactNormalizer.sanitize_privacy(raw))
 

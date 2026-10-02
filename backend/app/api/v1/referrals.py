@@ -128,8 +128,8 @@ async def get_job_referrals_discovery(
         if existing:
             # Reconstruct discovery response
             verified_count = sum(1 for c in existing if c.verification_status == "VERIFIED")
-            target_reached = verified_count >= Phase18DiscoveryService.TARGET_COUNT
-            shortfall = max(0, Phase18DiscoveryService.TARGET_COUNT - verified_count)
+            target_reached = len(existing) >= Phase18DiscoveryService.TARGET_COUNT
+            shortfall = max(0, Phase18DiscoveryService.TARGET_COUNT - len(existing))
             notice = None
             if not target_reached:
                 notice = "Target not reached because fewer verified/relevant contacts were discoverable from the configured sources."

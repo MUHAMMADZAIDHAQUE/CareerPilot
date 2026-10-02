@@ -139,10 +139,22 @@ function ResumeWorkspaceContent() {
     }
   }, [searchParams]);
 
-  const triggerReferralDiscovery = async (jobId: string) => {
+  const loadReferralsForJob = async (jobId: string, forceRediscover = false) => {
     setReferralsLoading(true);
     setReferralsError(null);
     try {
+      if (!forceRediscover) {
+        // Step 1: Check existing cached referrals in DB
+        const existingRes = await fetchDiscoveredReferralsForJobApi(jobId, candidate?.id);
+        if (existingRes.data && existingRes.data.contacts && existingRes.data.contacts.length > 0) {
+          setReferralsMeta(existingRes.data);
+          setReferralContacts(existingRes.data.contacts);
+          setReferralsLoading(false);
+          return;
+        }
+      }
+
+      // Step 2: Run discovery if no existing contacts or explicitly requested
       const res = await discoverReferralsEngineApi(jobId, candidate?.id, 100);
       if (res.data) {
         setReferralsMeta(res.data);
@@ -182,8 +194,8 @@ function ResumeWorkspaceContent() {
         ]);
         if (jobRes.data) {
           setTargetJob(jobRes.data);
-          // Automatically trigger referral discovery targeting 100 prospects
-          triggerReferralDiscovery(jobIdParam);
+          // Load cached referrals or discover if empty
+          loadReferralsForJob(jobIdParam, false);
         } else {
           setTargetJobError(jobRes.error || `Job '${jobIdParam}' could not be loaded.`);
         }
@@ -499,6 +511,16 @@ function ResumeWorkspaceContent() {
                       </Badge>
                     )}
 
+                    <button
+                      onClick={() => targetJob && loadReferralsForJob(targetJob.id, true)}
+                      disabled={referralsLoading}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors disabled:opacity-50"
+                      title="Re-run referral discovery across configured sources"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${referralsLoading ? "animate-spin text-blue-600" : ""}`} />
+                      <span>Rediscover</span>
+                    </button>
+
                     <Link
                       href={`/referrals?job_id=${targetJob.id}`}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors"
@@ -587,6 +609,19 @@ function ResumeWorkspaceContent() {
                                     {contact.relationship_type}
                                   </span>
                                 )}
+                                {contact.verification_status && (
+                                  <span className={`px-1.5 py-0.5 rounded font-mono text-[10px] uppercase font-semibold ${
+                                    contact.verification_status === "VERIFIED"
+                                      ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                                      : contact.verification_status === "INDEXED_PROSPECT"
+                                      ? "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                                      : contact.verification_status === "SEARCH_LEAD"
+                                      ? "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                                  }`}>
+                                    {contact.verification_status.replace("_", " ")}
+                                  </span>
+                                )}
                               </div>
                             )}
 
@@ -605,7 +640,7 @@ function ResumeWorkspaceContent() {
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
                               >
-                                <span>Public Profile</span>
+                                <span>{contact.verification_status === "SEARCH_LEAD" ? "Live Search" : "Public Profile"}</span>
                                 <ExternalLink className="w-3 h-3" />
                               </a>
                             ) : (
@@ -651,7 +686,7 @@ function ResumeWorkspaceContent() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => triggerReferralDiscovery(targetJob.id)}
+                      onClick={() => loadReferralsForJob(targetJob.id, true)}
                       icon={<RefreshCw className="w-3.5 h-3.5" />}
                     >
                       Retry Discovery

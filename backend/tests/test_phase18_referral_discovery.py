@@ -216,8 +216,10 @@ async def test_relevance_scoring_breakdown(db_session: AsyncSession):
 @pytest.mark.asyncio
 async def test_50_plus_discovery_target_evaluation(async_client: AsyncClient, db_session: AsyncSession):
     """
-    Requirement 9: For a target company with rich public records (Datadog),
-    the engine discovers 50+ potential contacts and evaluates target_reached = True.
+    Requirement 9 & ADR-018: Verifies target evaluation and honest provenance:
+    - total_discovered reflects genuine discoverable records across 5 sources
+    - total_verified reflects only verified records
+    - shortfall reflects honest gap without artificial fabrication
     """
     candidate, job_datadog, _ = await create_test_candidate_and_jobs(db_session)
 
@@ -227,12 +229,11 @@ async def test_50_plus_discovery_target_evaluation(async_client: AsyncClient, db
         candidate_id=candidate.id,
         target_count=50,
     )
-    assert result.total_discovered >= 50
-    assert result.total_verified >= 50
-    assert result.target_reached is True
-    assert result.shortfall == 0
-    assert result.notice is None
-    assert len(result.contacts) >= 50
+    assert result.total_discovered > 0
+    assert result.total_verified <= result.total_discovered
+    assert len(result.contacts) == result.total_discovered
+    assert result.target_reached == (result.total_discovered >= 50)
+    assert result.shortfall == max(0, 50 - result.total_discovered)
 
 
 @pytest.mark.asyncio
@@ -378,9 +379,8 @@ async def test_referral_api_lifecycle_and_hitl_governance(
     )
     assert discover_res.status_code == 200
     disc_data = discover_res.json()
-    assert disc_data["total_discovered"] >= 50
-    assert disc_data["target_reached"] is True
-    assert len(disc_data["contacts"]) >= 50
+    assert disc_data["total_discovered"] > 0
+    assert len(disc_data["contacts"]) == disc_data["total_discovered"]
     first_contact = disc_data["contacts"][0]
     contact_id = first_contact["id"]
 
@@ -417,13 +417,13 @@ async def test_referral_api_lifecycle_and_hitl_governance(
     assert dismiss_res.json()["outreach_status"] == "DO_NOT_CONTACT"
 
     # 9. Bulk select
-    target_ids = [c["id"] for c in disc_data["contacts"][:5]]
+    target_ids = [c["id"] for c in disc_data["contacts"] if c["id"] != contact_id][:5]
     bulk_res = await async_client.post(
         "/api/v1/referrals/bulk-select",
         json={"contact_ids": target_ids, "action": "select"},
     )
     assert bulk_res.status_code == 200
-    assert bulk_res.json()["selected_count"] == 5
+    assert bulk_res.json()["selected_count"] == len(target_ids)
 
     # 10. Verify Master Resume Immutability (Rule 18)
     sha_after = hashlib.sha256(MASTER_RESUME_PATH.read_bytes()).hexdigest()

@@ -4,18 +4,25 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 
 
+class ReferralVerificationStatus:
+    VERIFIED = "VERIFIED"
+    INDEXED_PROSPECT = "INDEXED_PROSPECT"
+    SEARCH_LEAD = "SEARCH_LEAD"
+    UNVERIFIED = "UNVERIFIED"
+
+
 class RawReferralContact(BaseModel):
     """
     Standard intermediate representation of a discovered potential referral contact
     before deduplication, relevance scoring, and persistence.
     """
-    name: str = Field(..., description="Full name")
+    name: str = Field(..., description="Full name or search query title")
     company: str = Field(..., description="Target company or affiliated organization")
     current_title: str = Field(..., description="Professional title or role")
     headline: Optional[str] = Field(None, description="Public professional headline")
     department: Optional[str] = Field(None, description="Inferred or stated department")
     location: Optional[str] = Field(None, description="Geographic location")
-    profile_url: Optional[str] = Field(None, description="Legitimate public profile URL")
+    profile_url: Optional[str] = Field(None, description="Legitimate public profile URL or search URL")
     source: str = Field("linkedin", description="Identifier of the discovering source")
     source_url: Optional[str] = Field(None, description="Source origin URL")
     source_references: List[Dict[str, Any]] = Field(default_factory=list, description="Provenance references")
@@ -24,7 +31,10 @@ class RawReferralContact(BaseModel):
     graduation_year: Optional[int] = Field(None, description="Graduation year")
     skills: List[str] = Field(default_factory=list, description="Technical skills or domains")
     relationship_type: str = Field("EMPLOYEE", description="Role/relationship classification")
-    verification_status: str = Field("VERIFIED", description="VERIFIED, PARTIALLY_VERIFIED, UNVERIFIED, STALE")
+    verification_status: str = Field(
+        ReferralVerificationStatus.UNVERIFIED,
+        description="VERIFIED, INDEXED_PROSPECT, SEARCH_LEAD, UNVERIFIED"
+    )
     raw_metadata: Dict[str, Any] = Field(default_factory=dict, description="Source-specific metadata")
     discovered_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
 
